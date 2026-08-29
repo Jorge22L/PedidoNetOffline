@@ -1,0 +1,359 @@
+# ============================================================
+
+# .NET / ASP.NET Core / Blazor WebAssembly
+
+# ============================================================
+
+# Build results
+
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Debug / Release
+
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+
+# Published output
+
+publish/
+[Pp]ublish/
+artifacts/
+
+# ============================================================
+
+# Visual Studio
+
+# ============================================================
+
+.vs/
+
+# User-specific files
+
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio cache/options
+
+*.VC.db
+*.VC.VC.opendb
+*.opendb
+
+# ============================================================
+
+# JetBrains Rider / IntelliJ
+
+# ============================================================
+
+.idea/
+*.sln.iml
+
+# ============================================================
+
+# Visual Studio Code
+
+# ============================================================
+
+.vscode/
+
+# Si deseas compartir configuraciones específicas de VS Code,
+
+# puedes comentar la línea anterior y usar exclusiones más específicas.
+
+# ============================================================
+
+# .NET tooling
+
+# ============================================================
+
+*.nupkg
+*.snupkg
+
+# NuGet package restore
+
+packages/
+*.nuget.props
+*.nuget.targets
+
+# NuGet cache-related
+
+.nuget/
+
+# MSBuild
+
+*.binlog
+
+# ============================================================
+
+# ASP.NET Core
+
+# ============================================================
+
+# Local environment configuration
+
+appsettings.Local.json
+appsettings.local.json
+appsettings.Development.Local.json
+appsettings.*.Local.json
+
+# User secrets should not be committed
+
+secrets.json
+
+# Development certificates
+
+*.pfx
+*.p12
+*.cer
+*.crt
+*.key
+
+# ============================================================
+
+# Environment variables / secrets
+
+# ============================================================
+
+.env
+.env.*
+!.env.example
+
+# ============================================================
+
+# Blazor WebAssembly / PWA
+
+# ============================================================
+
+# Generated static web assets
+
+staticwebassets/
+*.staticwebassets.json
+*.staticwebassets.runtime.json
+*.staticwebassets.endpoints.json
+
+# Service worker generated/intermediate files
+
+service-worker-assets.js
+
+# Blazor boot/build generated files
+
+blazor.boot.json
+
+# WebAssembly intermediate/generated output
+
+wasm/
+native/
+
+# ============================================================
+
+# Node / Frontend tooling
+
+# ============================================================
+
+# Actualmente Bootstrap puede venir incluido directamente con
+
+# Blazor, pero estas reglas serán útiles si más adelante se
+
+# introduce npm, Sass, Bootstrap npm, Vite, etc.
+
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.npm/
+.yarn/
+.pnpm-store/
+
+# Frontend build cache
+
+.cache/
+.parcel-cache/
+.vite/
+
+# ============================================================
+
+# CSS / Sass generated files
+
+# ============================================================
+
+*.css.map
+*.scss.map
+
+# ============================================================
+
+# Test results / coverage
+
+# ============================================================
+
+TestResults/
+[Tt]est[Rr]esult*/
+*.trx
+
+coverage/
+coverage.xml
+coverage.json
+coverage.opencover.xml
+coverage.cobertura.xml
+
+# Coverlet
+
+.coverage
+coverage.*
+
+# ============================================================
+
+# Entity Framework Core
+
+# ============================================================
+
+# IMPORTANT:
+
+# NO ignorar la carpeta Migrations.
+
+#
+
+# Las migraciones forman parte del código fuente y normalmente
+
+# deben versionarse en Git.
+
+# ============================================================
+
+# Databases
+
+# ============================================================
+
+# Local SQLite databases, si se utilizan
+
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Si algún archivo de base de datos debe versionarse,
+
+# agrégalo posteriormente con una excepción:
+
+# !nombre-base.db
+
+# ============================================================
+
+# Temporary files
+
+# ============================================================
+
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*.rej
+
+tmp/
+temp/
+
+# ============================================================
+
+# Operating System
+
+# ============================================================
+
+# macOS
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+
+# Linux
+
+*~
+
+# ============================================================
+
+# IDE / Editor
+
+# ============================================================
+
+*.swp
+*.swo
+*.swn
+
+# ============================================================
+
+# Miscellaneous
+
+# ============================================================
+
+*.pid
+*.seed
+*.pid.lock
+
+# Local profiling files
+
+*.diagsession
+*.vsp
+*.vspx
+*.sap
+
+# ============================================================
+
+# Project-specific local files
+
+# ============================================================
+
+# Local API configuration
+
+src/Api/appsettings.Local.json
+
+# Local Client configuration
+
+src/Client/wwwroot/appsettings.Local.json
+
+# Local launch overrides if you decide not to share them
+
+# **/Properties/launchSettings.json
+
+# ============================================================
+
+# IMPORTANT FILES THAT SHOULD REMAIN VERSIONED
+
+# ============================================================
+
+# Keep solution/projects
+
+!*.sln
+!*.csproj
+
+# Keep Razor files
+
+!*.razor
+
+# Keep normal project configuration
+
+!appsettings.json
+!appsettings.Development.json
+
+# Keep Blazor/PWA source files
+
+!manifest.webmanifest
+!service-worker.js
+!service-worker.published.js
