@@ -1,6 +1,6 @@
 {
-  "name": "PedidoNet.Web",
-  "short_name": "PedidoNet.Web",
+  "name": "PedidoNet",
+  "short_name": "PedidoNet",
   "id": "./",
   "start_url": "./",
   "display": "standalone",
@@ -9,12 +9,12 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "icon-512.png",
+      "src": "pedidoNet-512.png",
       "type": "image/png",
       "sizes": "512x512"
     },
     {
-      "src": "icon-192.png",
+      "src": "pedidoNet-192.png",
       "type": "image/png",
       "sizes": "192x192"
     }

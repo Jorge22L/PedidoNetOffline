@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using PedidoNet.Web;
 using PedidoNet.Web.Models.Auth;
+using PedidoNet.Web.Services;
 using PedidoNet.Web.Services.Api;
 using PedidoNet.Web.Services.Productos;
 
@@ -24,6 +25,7 @@ builder.Services.AddScoped<ITokenStorage, TokenStorage>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ProductosApiClient>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
+builder.Services.AddScoped<ConnectivityService>();
 
 
 await builder.Build().RunAsync();

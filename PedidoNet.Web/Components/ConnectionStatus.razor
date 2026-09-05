@@ -1,0 +1,34 @@
+﻿@using PedidoNet.Web.Services
+@implements IDisposable
+@inject ConnectivityService Connectivity
+
+@if (Connectivity.IsOnline)
+{
+    <div class="alert alert-success py-2 mb-2">
+        🟢 Conectado
+    </div>
+}
+else
+{
+    <div class="alert alert-danger py-2 mb-2">
+        🔴 Sin conexión. Algunas funciones no están disponibles.
+    </div>
+}
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        Connectivity.ConnectivityChanged += OnConnectivityChanged;
+        await Connectivity.InitializeAsync();
+    }
+
+    private void OnConnectivityChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Connectivity.ConnectivityChanged -= OnConnectivityChanged;
+    }
+}
