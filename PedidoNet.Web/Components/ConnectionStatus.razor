@@ -4,14 +4,16 @@
 
 @if (Connectivity.IsOnline)
 {
-    <div class="alert alert-success py-2 mb-2">
-        🟢 Conectado
+    <div class="connection-status online">
+        <span class="connection-dot"></span>
+        Online
     </div>
 }
 else
 {
-    <div class="alert alert-danger py-2 mb-2">
-        🔴 Sin conexión. Algunas funciones no están disponibles.
+    <div class="connection-status offline">
+        <span class="connection-dot"></span>
+        Offline
     </div>
 }
 
@@ -19,7 +21,15 @@ else
     protected override async Task OnInitializedAsync()
     {
         Connectivity.ConnectivityChanged += OnConnectivityChanged;
-        await Connectivity.InitializeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Connectivity.InitializeAsync();
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private void OnConnectivityChanged()

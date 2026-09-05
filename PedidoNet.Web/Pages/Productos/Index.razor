@@ -1,25 +1,42 @@
 ﻿@page "/productos"
+@implements IDisposable
+
 @using PedidoNet.Web.Models.Productos
+@using PedidoNet.Web.Services
 @using PedidoNet.Web.Services.Productos
 
 @inject IProductoService ProductoService
+@inject ConnectivityService Connectivity
 @inject NavigationManager Navigation
 
-<PageTitle>Productos</PageTitle>
-
-<div class="container-fluid py-4">
-    <PageHeader Title="Productos"
-                Description="Consulta el catálogo de productos.">
+<div class="container-fluid px-3 px-md-4 py-4">
+    <PageHeader Title="Catálogo de productos"
+                Description="Administra los productos disponibles.">
 
         <Actions>
             <button type="button"
-                    class="btn btn-primary"
-                    @onclick="NuevoProducto">
+                    class="btn btn-primary px-3"
+                    @onclick="NuevoProducto"
+                    disabled="@(!Connectivity.IsOnline)">
                 Nuevo producto
             </button>
         </Actions>
 
     </PageHeader>
+    @if (!Connectivity.IsOnline)
+    {
+         <div class="offline-banner mb-4">
+             <div>
+                 <div class="fw-bold">
+                     Estás trabajando sin conexión.
+                 </div>
+
+                 <div class="small">
+                     Puedes continuar usando la aplicación, pero las operaciones requieren conexión con la API.
+                 </div>
+             </div>
+         </div>
+    }
 
     @if (isLoading)
     {
@@ -80,13 +97,15 @@
                 <td class="text-end">
                     <button type="button"
                             class="btn btn-sm btn-outline-primary me-2"
-                            @onclick="@(() => OnEditar(producto))">
+                            @onclick="@(() => OnEditar(producto))"
+                            disabled="@(!Connectivity.IsOnline)">
                         Editar
                     </button>
 
                     <button type="button"
                             class="btn btn-sm btn-outline-danger"
-                            @onclick="@(() => OnEliminar(producto))">
+                            @onclick="@(() => OnEliminar(producto))"
+                            disabled="@(!Connectivity.IsOnline)">
                         Eliminar
                     </button>
                 </td>
@@ -108,6 +127,7 @@
     {
         try
         {
+            Connectivity.ConnectivityChanged += OnConnectivityChanged;
             productos = await ProductoService.ObtenerTodosAsync();
         }
         catch (UnauthorizedAccessException)
@@ -129,14 +149,17 @@
         }
     }
 
-    private void Editar(int id)
+    private void OnConnectivityChanged()
     {
-        Navigation.NavigateTo($"/productos/editar/{id}");
-    }
+        InvokeAsync(async () =>
+        {
+            if (Connectivity.IsOnline)
+            {
+                await CargarProductosAsync();
+            }
 
-    private object Editar(object productoId)
-    {
-        throw new NotImplementedException();
+            StateHasChanged();
+        });
     }
 
     private void OnEditar(ProductosDto producto)
@@ -155,12 +178,49 @@
 
     private async Task CargarProductosAsync()
     {
-        productos =
-            await ProductoService.ObtenerTodosAsync();
+        if (!Connectivity.IsOnline)
+        {
+            isLoading = false;
+            if(productos.Count == 0)
+            {
+                errorMessage = "Sin conexión. No es posible consultar productos.";
+            }
+
+            return;
+        }
+
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            productos = await ProductoService.ObtenerTodosAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch(HttpRequestException e)
+        {
+            errorMessage = $"No fue posible consultar los productos ${e.Message}";
+        }
+        catch(Exception e)
+        {
+            errorMessage = $"Error inesperado: {e.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private void NuevoProducto()
     {
         Navigation.NavigateTo("/productos/crear");
+    }
+
+    public void Dispose()
+    {
+        Connectivity.ConnectivityChanged -= OnConnectivityChanged;
     }
 }

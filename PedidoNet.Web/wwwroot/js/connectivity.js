@@ -3,31 +3,36 @@
 
     initialize: function(dotNetRef){
         this.dotNetRef = dotNetRef;
+        this.onlineHandler = () => {
+            console.log("Evento ONLINE");
+            this.dotNetRef?.invokeMethodAsync("SetOnlineStatus", true);
+        }
 
-        window.addEventListener("online", this.handleOnline);
-        window.addEventListener("offline", this.handleOffline);
+        this.offlineHandler = () => {
+            console.log("Evento OFFLINE");
+            this.dotNetRef?.invokeMethodAsync("SetOnlineStatus", false);
+        }
+
+        window.addEventListener("online", this.onlineHandler);
+        window.addEventListener("offline", this.offlineHandler);
+
+        console.log("Connectivity inicializado. Estado: ", navigator.onLine);
 
         return navigator.onLine;
     },
 
-    handleOnline: function(){
-        if(window.connectivity.dotNetRef){
-            window.connectivity.dotNetRef.invokeMethodAsync("SetOnlineStatus", true);
-        }
-    },
-
-    handleOffline: function () {
-        if (window.connectivity.dotNetRef) {
-            window.connectivity.dotNetRef.invokeMethodAsync("SetOnlineStatus", false);
-        }
-    },
-
     dispose: function () {
-        window.removeEventListener("online", this.handleOnline);
+        if (this.onlineHandler) {
+            window.removeEventListener("online", this.onlineHandler);
+        }
 
-        window.removeEventListener("offline", this.handleOffline);
+        if (this.offlineHandler) {
+            window.removeEventListener("offline", this.offlineHandler);
+        }
 
-        this.dotNetRef = null
+        this.dotNetRef = null;
     }
+
+    
 
 }

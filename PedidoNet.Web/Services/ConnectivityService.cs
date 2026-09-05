@@ -17,8 +17,10 @@ namespace PedidoNet.Web.Services
 
         public async Task InitializeAsync()
         {
-            _dotNetRef = DotNetObjectReference.Create(this);
+            _dotNetRef ??= DotNetObjectReference.Create(this);
             IsOnline = await _jsRuntime.InvokeAsync<bool>("connectivity.initialize", _dotNetRef);
+
+            ConnectivityChanged?.Invoke();
         }
 
         [JSInvokable]

@@ -1,7 +1,37 @@
 ﻿@using PedidoNet.Web.Components
 @inherits LayoutComponentBase
 
-<main>
-    <ConnectionStatus />
-    @Body
-</main>
+<div class="app-shell">
+    <header class="app-header">
+        <div class="container-fluid app-header-inner">
+            <a class="app-brand" href="/">
+                <div class="app-brand-icon">
+                    <img src="pedidoNet-192.png" />
+                </div>
+                <div>
+                    <div class="app-brand-title">
+                        PedidoNet
+                    </div>
+
+                    <div class="app-brand-subtitle">
+                        Gestión de Pedidos
+                    </div>
+                </div>
+            </a>
+
+            <div class="app-header-actions">
+                <ConnectionStatus />
+            </div>
+        </div>
+    </header>
+
+    <main class="app-main">
+        @Body
+    </main>
+
+    <footer class="app-footer">
+        <div class="container-fluid">
+            PedidoNet . Blazor WebAssembly PWA
+        </div>
+    </footer>
+</div>
