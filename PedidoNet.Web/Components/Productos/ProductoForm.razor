@@ -1,0 +1,116 @@
+﻿@using PedidoNet.Web.Models.Productos
+
+<EditForm Model="@Model"
+          OnValidSubmit="HandleValidSubmit">
+
+    <DataAnnotationsValidator />
+
+    <FormField Label="Código">
+        <InputText class="form-control"
+                   @bind-Value="Model.Codigo" />
+
+        <ValidationMessage For="@(() => Model.Codigo)" />
+    </FormField>
+
+    <FormField Label="Nombre">
+        <InputText class="form-control"
+                   @bind-Value="Model.Nombre" />
+
+        <ValidationMessage For="@(() => Model.Nombre)" />
+    </FormField>
+
+    <div class="row">
+
+        <div class="col-md-6">
+            <FormField Label="Precio de venta">
+
+                <InputNumber class="form-control"
+                             @bind-Value="Model.PrecioVenta" />
+
+                <ValidationMessage For="@(() => Model.PrecioVenta)" />
+
+            </FormField>
+        </div>
+
+        <div class="col-md-6">
+            <FormField Label="Existencias">
+
+                <InputNumber class="form-control"
+                             @bind-Value="Model.Existencias" />
+
+                <ValidationMessage For="@(() => Model.Existencias)" />
+
+            </FormField>
+        </div>
+
+    </div>
+
+    <div class="form-check mb-3">
+        <InputCheckbox class="form-check-input"
+                       @bind-Value="Model.TieneIVA" />
+
+        <label class="form-check-label">
+            Aplica IVA
+        </label>
+    </div>
+
+    <div class="form-check mb-4">
+        <InputCheckbox class="form-check-input"
+                       @bind-Value="Model.TieneISC" />
+
+        <label class="form-check-label">
+            Aplica ISC
+        </label>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2">
+
+        @if (Cancel.HasDelegate)
+        {
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    @onclick="HandleCancel">
+                Cancelar
+            </button>
+        }
+
+        <LoadingButton Type="submit"
+                       IsLoading="@IsSaving"
+                       LoadingText="Guardando...">
+
+            @SubmitText
+
+        </LoadingButton>
+
+    </div>
+
+</EditForm>
+
+@code {
+    @code {
+        [Parameter, EditorRequired]
+        public ProductoFormModel Model { get; set; } = new();
+
+        [Parameter]
+        public string SubmitText { get; set; } = "Guardar";
+
+        [Parameter]
+        public bool IsSaving { get; set; }
+
+        [Parameter]
+        public EventCallback<ProductoFormModel> OnValidSubmit { get; set; }
+
+        [Parameter]
+        public EventCallback Cancel { get; set; }
+
+        private Task HandleValidSubmit()
+        {
+            return OnValidSubmit.InvokeAsync(Model);
+        }
+
+        private Task HandleCancel()
+        {
+            return Cancel.InvokeAsync();
+        }
+    }
+}

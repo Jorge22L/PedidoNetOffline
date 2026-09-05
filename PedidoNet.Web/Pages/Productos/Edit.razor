@@ -1,0 +1,132 @@
+﻿@page "/productos/editar/{Id:int}"
+
+@using PedidoNet.Web.Models.Productos
+@using PedidoNet.Web.Services.Productos
+
+@inject IProductoService ProductoService
+@inject NavigationManager Navigation
+
+<PageTitle>Editar producto</PageTitle>
+
+<div class="container-fluid py-4">
+
+    <PageHeader
+        Title="Editar producto"
+        Description="Actualiza la información del producto." />
+
+    @if (isLoading)
+    {
+        <LoadingIndicator
+            Message="Cargando producto..." />
+    }
+    else if (notFound)
+    {
+        <AlertMessage
+            Variant="warning"
+            Message="El producto no existe."
+            Dismissible="false" />
+    }
+    else
+    {
+        <AlertMessage
+            Message="@errorMessage"
+            Dismissible="false" />
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+
+                <ProductoForm
+                    Model="@model"
+                    SubmitText="Guardar cambios"
+                    IsSaving="@isSaving"
+                    OnValidSubmit="GuardarAsync"
+                    Cancel="Cancelar" />
+
+            </div>
+        </div>
+    }
+
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ProductoFormModel model = new();
+
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool notFound;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var producto =
+                await ProductoService.ObtenerPorIdAsync(Id);
+
+            if (producto is null)
+            {
+                notFound = true;
+                return;
+            }
+
+            model = new ProductoFormModel
+            {
+                Codigo = producto.Codigo,
+                Nombre = producto.Nombre,
+                PrecioVenta = producto.PrecioVenta,
+                Existencias = producto.Existencias,
+                TieneIVA = producto.TieneIVA == true,
+                TieneISC = producto.TieneISC == true
+            };
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task GuardarAsync()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            var request = new ActualizarProductoRequest
+            {
+                Codigo = model.Codigo,
+                Nombre = model.Nombre,
+                PrecioVenta = model.PrecioVenta,
+                Existencias = model.Existencias,
+                TieneIVA = model.TieneIVA,
+                TieneISC = model.TieneISC
+            };
+
+            await ProductoService.ActualizarAsync(
+                Id,
+                request);
+
+            Navigation.NavigateTo("/productos");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo("/productos");
+    }
+}

@@ -1,0 +1,79 @@
+﻿@page "/productos/crear"
+
+@using PedidoNet.Web.Components.Productos
+@using PedidoNet.Web.Models.Productos
+@using PedidoNet.Web.Services.Productos
+
+@inject IProductoService ProductoService
+@inject NavigationManager Navigation
+
+<PageTitle>Nuevo producto</PageTitle>
+
+<div class="container-fluid py-4">
+
+    <PageHeader
+        Title="Nuevo producto"
+        Description="Registra un nuevo producto." />
+
+    <AlertMessage
+        Message="@errorMessage"
+        Variant="danger"
+        Dismissible="false" />
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+
+            <ProductoForm
+                Model="@model"
+                SubmitText="Crear producto"
+                IsSaving="@isSaving"
+                OnValidSubmit="GuardarAsync"
+                Cancel="Cancelar" />
+
+        </div>
+    </div>
+
+</div>
+
+@code {
+    private ProductoFormModel model = new();
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    private async Task GuardarAsync(ProductoFormModel model)
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            var request = new CrearProductoRequest
+            {
+                Codigo = model.Codigo,
+                Nombre = model.Nombre,
+                PrecioVenta = model.PrecioVenta,
+                Existencias = model.Existencias,
+                TieneIVA = model.TieneIVA,
+                TieneISC = model.TieneISC
+            };
+
+            await ProductoService.CrearAsync(request);
+
+            Navigation.NavigateTo("/productos");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo("/productos");
+    }
+}

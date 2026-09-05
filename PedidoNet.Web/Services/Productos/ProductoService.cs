@@ -10,9 +10,21 @@ namespace PedidoNet.Web.Services.Productos
         {
             _apiClient = apiClient;
         }
-        public Task<List<ProductosDto>> GetAllAsync()
-        {
-            return _apiClient.GetAllSync();
-        }
+        public Task<List<ProductosDto>> ObtenerTodosAsync()
+        => _apiClient.GetAllSync();
+
+        public Task<ProductosDto?> ObtenerPorIdAsync(int id)
+            => _apiClient.GetByIdAsync(id);
+
+        public Task CrearAsync(CrearProductoRequest model)
+            => _apiClient.CreateAsync(model);
+
+        public Task ActualizarAsync(
+            int id,
+            ActualizarProductoRequest model)
+            => _apiClient.UpdateAsync(id, model);
+
+        public Task EliminarAsync(int id)
+            => _apiClient.DeleteAsync(id);
     }
 }

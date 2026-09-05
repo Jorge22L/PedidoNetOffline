@@ -18,21 +18,8 @@
   <ItemGroup>
     <Folder Include="Components\Layout\" />
     <Folder Include="Components\Forms\" />
-    <Folder Include="Abstractions\" />
     <Folder Include="Components\Clientes\" />
     <Folder Include="Components\Productos\" />
-    <Folder Include="Models\Auth\" />
-    <Folder Include="Models\Cliente\" />
-    <Folder Include="Models\Pedidos\" />
-    <Folder Include="Models\Productos\" />
-    <Folder Include="Connectivity\" />
-    <Folder Include="Auth\" />
-    <Folder Include="Sync\" />
-    <Folder Include="Storage\" />
-    <Folder Include="Pages\Dashboard\" />
-    <Folder Include="Pages\Producto\" />
-    <Folder Include="Services\Api\" />
-    <Folder Include="Services\Productos\" />
   </ItemGroup>
 
 </Project>

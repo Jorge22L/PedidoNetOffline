@@ -1,0 +1,26 @@
+﻿<div class="mb-3">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label class="form-label">
+            @Label
+        </label>
+    }
+
+    @ChildContent
+
+    @if(!string.IsNullOrWhiteSpace(HelpText))
+    {
+        <div class="form-text">
+            @HelpText
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? Label { get; set; }
+    [Parameter]
+    public string? HelpText { get; set; }
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

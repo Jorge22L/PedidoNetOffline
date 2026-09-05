@@ -25,4 +25,5 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ProductosApiClient>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
 
+
 await builder.Build().RunAsync();

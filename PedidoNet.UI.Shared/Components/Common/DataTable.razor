@@ -1,25 +1,28 @@
 ﻿@typeparam TItem
+
 <div class="card border-0 shadow-sm">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
-           <thead class="table-light">
-               <tr>
-                   @Header
-               </tr>
-           </thead>
 
-           <tbody>
-                @if(Items is null || !Items.Any())
+            <thead class="table-light">
+                <tr>
+                    @Header
+                </tr>
+            </thead>
+
+            <tbody>
+                @if (Items is null || !Items.Any())
                 {
                     <tr>
-                        <td colspan="@ColumnCount" class="text-center text-secondary py-4">
+                        <td colspan="@ColumnCount"
+                            class="text-center text-secondary py-4">
                             @EmptyMessage
                         </td>
                     </tr>
                 }
                 else
                 {
-                    @foreach(var item in Items)
+                    @foreach (var item in Items)
                     {
                         <tr>
                             @RowTemplate(item)
@@ -27,6 +30,7 @@
                     }
                 }
             </tbody>
+
         </table>
     </div>
 </div>
@@ -34,12 +38,16 @@
 @code {
     [Parameter]
     public IEnumerable<TItem>? Items { get; set; }
+
     [Parameter, EditorRequired]
-    public RenderFragment Header { get; set; } = default!;
+    public RenderFragment? Header { get; set; }
+
     [Parameter, EditorRequired]
-    public RenderFragment<TItem> RowTemplate { get; set; } = default!;
+    public RenderFragment<TItem>? RowTemplate { get; set; }
+
     [Parameter]
     public int ColumnCount { get; set; } = 1;
+
     [Parameter]
     public string EmptyMessage { get; set; } = "No hay registros.";
 }

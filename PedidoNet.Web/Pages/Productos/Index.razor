@@ -9,7 +9,17 @@
 
 <div class="container-fluid py-4">
     <PageHeader Title="Productos"
-                Description="Consulta el catálogo de productos." />
+                Description="Consulta el catálogo de productos.">
+
+        <Actions>
+            <button type="button"
+                    class="btn btn-primary"
+                    @onclick="NuevoProducto">
+                Nuevo producto
+            </button>
+        </Actions>
+
+    </PageHeader>
 
     @if (isLoading)
     {
@@ -28,42 +38,57 @@
     }
     else
     {
-        <DataTable TItem="ProductosDto"
+        <DataTable TItem="PedidoNet.Web.Models.Productos.ProductosDto"
                    Items="@productos"
-                   ColumnCount="6"
+                   ColumnCount="7"
                    EmptyMessage="No hay productos registrados.">
 
             <Header>
                 <th>Código</th>
                 <th>Producto</th>
-                <th class="text-end">Precio</th>
-                <th class="text-center">Existencias</th>
-                <th class="text-center">IVA</th>
-                <th class="text-center">ISC</th>
+                <th>Precio</th>
+                <th>Existencias</th>
+                <th>IVA</th>
+                <th>ISC</th>
+                <th>Acciones</th>
             </Header>
 
-            <RowTemplate Context="product">
+            <RowTemplate Context="producto">
 
-                <td>@product.Codigo</td>
+                <td>@producto.Codigo</td>
 
                 <td class="fw-semibold">
-                    @product.Nombre
+                    @producto.Nombre
                 </td>
 
                 <td class="text-end">
-                    @product.PrecioVenta.ToString("N2")
+                    @producto.PrecioVenta.ToString("N2")
                 </td>
 
                 <td class="text-center">
-                    @product.Existencias
+                    @producto.Existencias
                 </td>
 
                 <td class="text-center">
-                    @(product.TieneIVA == true ? "Sí" : "No")
+                    @(producto.TieneIVA == true ? "Sí" : "No")
                 </td>
 
                 <td class="text-center">
-                    @(product.TieneISC == true ? "Sí" : "No")
+                    @(producto.TieneISC == true ? "Sí" : "No")
+                </td>
+
+                <td class="text-end">
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary me-2"
+                            @onclick="@(() => OnEditar(producto))">
+                        Editar
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-danger"
+                            @onclick="@(() => OnEliminar(producto))">
+                        Eliminar
+                    </button>
                 </td>
 
             </RowTemplate>
@@ -71,6 +96,7 @@
         </DataTable>
     }
 </div>
+
 @code {
     private List<ProductosDto> productos = [];
 
@@ -82,7 +108,7 @@
     {
         try
         {
-            productos = await ProductoService.GetAllAsync();
+            productos = await ProductoService.ObtenerTodosAsync();
         }
         catch (UnauthorizedAccessException)
         {
@@ -101,5 +127,40 @@
         {
             isLoading = false;
         }
+    }
+
+    private void Editar(int id)
+    {
+        Navigation.NavigateTo($"/productos/editar/{id}");
+    }
+
+    private object Editar(object productoId)
+    {
+        throw new NotImplementedException();
+    }
+
+    private void OnEditar(ProductosDto producto)
+    {
+        Navigation.NavigateTo(
+            $"/productos/editar/{producto.ProductoId}");
+    }
+
+    private async Task OnEliminar(ProductosDto producto)
+    {
+        await ProductoService.EliminarAsync(
+            producto.ProductoId);
+
+        await CargarProductosAsync();
+    }
+
+    private async Task CargarProductosAsync()
+    {
+        productos =
+            await ProductoService.ObtenerTodosAsync();
+    }
+
+    private void NuevoProducto()
+    {
+        Navigation.NavigateTo("/productos/crear");
     }
 }
