@@ -1,0 +1,105 @@
+﻿@page "/productos"
+@using PedidoNet.Web.Models.Productos
+@using PedidoNet.Web.Services.Productos
+
+@inject IProductoService ProductoService
+@inject NavigationManager Navigation
+
+<PageTitle>Productos</PageTitle>
+
+<div class="container-fluid py-4">
+    <PageHeader Title="Productos"
+                Description="Consulta el catálogo de productos." />
+
+    @if (isLoading)
+    {
+        <LoadingIndicator Message="Cargando productos..." />
+    }
+    else if (errorMessage is not null)
+    {
+        <AlertMessage Message="@errorMessage"
+                      Dismissible="false" />
+    }
+    else if (productos.Count == 0)
+    {
+        <AlertMessage Variant="info"
+                      Message="No hay productos registrados."
+                      Dismissible="false" />
+    }
+    else
+    {
+        <DataTable TItem="ProductosDto"
+                   Items="@productos"
+                   ColumnCount="6"
+                   EmptyMessage="No hay productos registrados.">
+
+            <Header>
+                <th>Código</th>
+                <th>Producto</th>
+                <th class="text-end">Precio</th>
+                <th class="text-center">Existencias</th>
+                <th class="text-center">IVA</th>
+                <th class="text-center">ISC</th>
+            </Header>
+
+            <RowTemplate Context="product">
+
+                <td>@product.Codigo</td>
+
+                <td class="fw-semibold">
+                    @product.Nombre
+                </td>
+
+                <td class="text-end">
+                    @product.PrecioVenta.ToString("N2")
+                </td>
+
+                <td class="text-center">
+                    @product.Existencias
+                </td>
+
+                <td class="text-center">
+                    @(product.TieneIVA == true ? "Sí" : "No")
+                </td>
+
+                <td class="text-center">
+                    @(product.TieneISC == true ? "Sí" : "No")
+                </td>
+
+            </RowTemplate>
+
+        </DataTable>
+    }
+</div>
+@code {
+    private List<ProductosDto> productos = [];
+
+    private bool isLoading = true;
+
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            productos = await ProductoService.GetAllAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage =
+                $"No fue posible consultar los productos. {ex.Message}";
+        }
+        catch(Exception ex)
+        {
+            errorMessage = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

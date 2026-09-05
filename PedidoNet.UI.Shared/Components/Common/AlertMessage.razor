@@ -1,0 +1,27 @@
+﻿@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="alert alert-@Variant alert-dismissable fade show" role="alert">
+        @Message
+        @if (Dismissible)
+        {
+            <button type="button" class="btn-close" aria-label="Cerrar" onclick="Close">
+            </button>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string? Message { get; set; }
+    [Parameter]
+    public string Variant { get; set; } = "danger";
+    [Parameter]
+    public bool Dismissible { get; set; } = true;
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

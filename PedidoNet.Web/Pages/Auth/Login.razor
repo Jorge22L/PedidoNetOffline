@@ -1,0 +1,90 @@
+﻿@page "/login"
+
+@using Auth
+@using Models.Auth
+
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+
+<PageTitle>Iniciar Sesión</PageTitle>
+<div class="container">
+    <div class="row justify-content-center align-items-center min-vh-100">
+        <div class="col-12 col-sm-10 col-md-7 col-lg-5 col-xl-4">
+            <div class="card border-0 shadow-lg">
+                <div class="card-body p-4 p-md-5">
+                    <div class="text-center mb-4">
+                        <h1 class="h3 fw-bold">PedidoNet</h1>
+                        <p class="text-secondary">
+                            Inicia sesión para continuar
+                        </p>
+                    </div>
+
+                    <AlertMessage Message="@errorMessage" Variant="danger" OnClose="ClearError" />
+
+                    <EditForm Model="@model" OnValidSubmit="LoginAsync">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label">Usuario</label>
+                            <InputText @bind-Value="model.NombreUsuario" class="form-control" 
+                            placeholder="Nombre de usuario" />
+
+                            <ValidationMessage For="@(() => model.NombreUsuario)" />
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Contraseña</label>
+                            <InputText @bind-Value="model.Password" class="form-control"
+                                       placeholder="Tu contraseña" type="password" />
+
+                            <ValidationMessage For="@(() => model.Password)" />
+                        </div>
+
+                        <LoadingButton Type="submit" isLoading="@isLoading"
+                            LoadingText="Ingresando..." CssClass="w-100">Iniciar Sesión</LoadingButton>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly LoginRequest model = new();
+    private bool isLoading;
+    private string? errorMessage;
+
+    private async Task LoginAsync()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            var success = await AuthService.LoginAsync(model);
+            if (!success)
+            {
+                errorMessage = "Usuario o contraseña incorrectos.";
+                return;
+            }
+
+            Navigation.NavigateTo("/productos");
+        }
+        catch(HttpRequestException)
+        {
+            errorMessage = "No fue posible comunicarse con la API";
+        }
+        catch
+        {
+            errorMessage = "Ocurrió un error inesperado";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ClearError()
+    {
+        errorMessage = null;
+    }
+}

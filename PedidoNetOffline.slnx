@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="PedidoNet.Mobile/PedidoNet.Mobile.csproj" />
+    <Project Path="PedidoNet.Mobile/PedidoNet.Mobile.csproj">
+      <Deploy Solution="Debug|*" />
+    </Project>
     <Project Path="PedidoNet.UI.Shared/PedidoNet.UI.Shared.csproj" />
     <Project Path="PedidoNet.Web/PedidoNet.Web.csproj" />
   </Folder>
