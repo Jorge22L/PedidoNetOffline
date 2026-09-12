@@ -1,4 +1,5 @@
 ﻿using PedidoNet.Web.Models.Productos;
+using PedidoNet.UI.Shared.Models.Productos;
 
 namespace PedidoNet.Web.Services.Productos
 {
@@ -13,5 +14,7 @@ namespace PedidoNet.Web.Services.Productos
         Task ActualizarAsync(int id,ActualizarProductoRequest model);
 
         Task EliminarAsync(int id);
+
+        Task<ProductoImagenDTO> SubirImagenAsync(int productoId, ProductoImageUpload image, CancellationToken cancellationToken = default);
     }
 }

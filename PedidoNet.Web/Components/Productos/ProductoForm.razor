@@ -87,30 +87,29 @@
 </EditForm>
 
 @code {
-    @code {
-        [Parameter, EditorRequired]
-        public ProductoFormModel Model { get; set; } = new();
 
-        [Parameter]
-        public string SubmitText { get; set; } = "Guardar";
+    [Parameter, EditorRequired]
+    public ProductoFormModel Model { get; set; } = new();
 
-        [Parameter]
-        public bool IsSaving { get; set; }
+    [Parameter]
+    public string SubmitText { get; set; } = "Guardar";
 
-        [Parameter]
-        public EventCallback<ProductoFormModel> OnValidSubmit { get; set; }
+    [Parameter]
+    public bool IsSaving { get; set; }
 
-        [Parameter]
-        public EventCallback Cancel { get; set; }
+    [Parameter]
+    public EventCallback<ProductoFormModel> OnValidSubmit { get; set; }
 
-        private Task HandleValidSubmit()
-        {
-            return OnValidSubmit.InvokeAsync(Model);
-        }
+    [Parameter]
+    public EventCallback Cancel { get; set; }
 
-        private Task HandleCancel()
-        {
-            return Cancel.InvokeAsync();
-        }
+    private Task HandleValidSubmit()
+    {
+        return OnValidSubmit.InvokeAsync(Model);
+    }
+
+    private Task HandleCancel()
+    {
+        return Cancel.InvokeAsync();
     }
 }

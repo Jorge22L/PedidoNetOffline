@@ -1,4 +1,6 @@
-﻿namespace PedidoNet.Web.Models.Productos
+﻿using PedidoNet.UI.Shared.Models.Productos;
+
+namespace PedidoNet.Web.Models.Productos
 {
     public class ProductosDto
     {
@@ -15,5 +17,6 @@
         public bool? TieneIVA { get; set; }
 
         public bool? TieneISC { get; set; }
+        public List<ProductoImagenDTO> Imagenes { get; set; } = [];
     }
 }

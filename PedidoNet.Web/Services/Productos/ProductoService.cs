@@ -1,4 +1,5 @@
-﻿using PedidoNet.Web.Models.Productos;
+﻿using PedidoNet.UI.Shared.Models.Productos;
+using PedidoNet.Web.Models.Productos;
 using PedidoNet.Web.Services.Api;
 
 namespace PedidoNet.Web.Services.Productos
@@ -11,7 +12,7 @@ namespace PedidoNet.Web.Services.Productos
             _apiClient = apiClient;
         }
         public Task<List<ProductosDto>> ObtenerTodosAsync()
-        => _apiClient.GetAllSync();
+        => _apiClient.GetAllAsync();
 
         public Task<ProductosDto?> ObtenerPorIdAsync(int id)
             => _apiClient.GetByIdAsync(id);
@@ -26,5 +27,10 @@ namespace PedidoNet.Web.Services.Productos
 
         public Task EliminarAsync(int id)
             => _apiClient.DeleteAsync(id);
+
+        public Task<ProductoImagenDTO> SubirImagenAsync(int productoId, ProductoImageUpload image, CancellationToken cancellationToken = default)
+        {
+            return _apiClient.UploadImageAsync(productoId, image, cancellationToken);
+        }
     }
 }

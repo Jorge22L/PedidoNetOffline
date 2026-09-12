@@ -1,4 +1,5 @@
-﻿using PedidoNet.Web.Models.Auth;
+﻿using PedidoNet.UI.Shared.Models.Productos;
+using PedidoNet.Web.Models.Auth;
 using PedidoNet.Web.Models.Productos;
 using System.Net;
 using System.Net.Http.Headers;
@@ -144,6 +145,30 @@ namespace PedidoNet.Web.Services.Api
                 await _httpClient.SendAsync(request);
 
             await EnsureSuccessAsync(response);
+        }
+
+        // SUBIR IMAGEN
+        public async Task<ProductoImagenDTO> UploadImageAsync(int productoId, ProductoImageUpload image, CancellationToken cancellationToken)
+        {
+            using var request = await CreateRequestAsync(HttpMethod.Post, $"api/Producto/{productoId}/imagenes");
+
+            using var content = new MultipartFormDataContent();
+
+            using var streamContent = new StreamContent(image.Stream);
+
+            streamContent.Headers.ContentType = new MediaTypeHeaderValue(image.ContentType);
+
+            content.Add(streamContent, "imagen", image.FileName);
+
+            content.Add(new StringContent(image.EsPrincipal.ToString()), "esPrincipal");
+
+            request.Content = content;
+
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
+
+            var result = await response.Content.ReadFromJsonAsync<ProductoImagenDTO>(cancellationToken: cancellationToken);
+
+            return result ?? throw new InvalidOperationException("La API no devolvió información de la imagen");
         }
 
         private static async Task EnsureSuccessAsync(

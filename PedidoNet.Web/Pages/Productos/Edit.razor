@@ -1,5 +1,7 @@
 ﻿@page "/productos/editar/{Id:int}"
 
+@using PedidoNet.UI.Shared.Components.Productos
+@using PedidoNet.UI.Shared.Models.Productos
 @using PedidoNet.Web.Models.Productos
 @using PedidoNet.Web.Services.Productos
 
@@ -41,6 +43,8 @@
                     IsSaving="@isSaving"
                     OnValidSubmit="GuardarAsync"
                     Cancel="Cancelar" />
+
+                <ProductoImageManager OnUpload="SubirImagenAsync" />
 
             </div>
         </div>
@@ -128,5 +132,23 @@
     private void Cancelar()
     {
         Navigation.NavigateTo("/productos");
+    }
+
+    private async Task SubirImagenAsync(ProductoImageUpload image)
+    {
+        try
+        {
+            errorMessage = null;
+
+            await ProductoService.SubirImagenAsync(Id, image );
+        }
+        catch(UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch(HttpRequestException ex)
+        {
+            errorMessage = $"No fue posible subir la imagen. {ex.Message}";
+        }
     }
 }
