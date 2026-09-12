@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Razor">
+﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -19,7 +19,6 @@
     <Folder Include="Components\Layout\" />
     <Folder Include="Components\Forms\" />
     <Folder Include="Components\Clientes\" />
-    <Folder Include="Components\Productos\" />
   </ItemGroup>
 
 </Project>

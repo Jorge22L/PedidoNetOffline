@@ -1,0 +1,104 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using PedidoNet.UI.Shared.Validation
+
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-body">
+        <h5>Imágenes del producto</h5>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger">
+            @ErrorMessage
+        </div>
+    }
+
+    <div class="mb-3">
+        <label class="form-label">Seleccionar la imagen</label>
+
+        <InputFile OnChange="OnFileSelected" accept=".jpg, .jpeg, .png, .webp, image/jpeg, image/png, image/webp"
+        class="form-control"/>
+    </div>
+
+    <div class="form-check mb-3">
+        <InputCheckbox class="form-check-input" @bind-Value="esPrincipal" />
+        <label>Imagen Principal</label>
+    </div>
+
+    <button type="button" class="btn btn-primary" disabled="@(selectedFile is null || IsUploading)"
+    @onclick="UploadAsync">
+        @if(IsUploading)
+        {
+            <span class="spinner-border spinner-border-sm me-2"></span>
+            <span>Subiendo...</span>
+        }
+        else
+        {
+            <span>Subir Imagen</span>
+        }
+    </button>
+</div>
+
+@code {
+    private const long MaxFileSize = 5 * 1024 * 1024;
+    private IBrowserFile? selectedFile;
+    private bool esPrincipal;
+    private string? ErrorMessage;
+    private bool IsUploading;
+
+    [Parameter]
+    public EventCallback<ProductoImageUpload> OnUpload { get; set; }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        ErrorMessage = null;
+        selectedFile = null;
+
+        var file = e.File;
+
+        var validation = await ImageFileValidator.ValidateAsync(file);
+
+        if (!validation.IsValid)
+        {
+            ErrorMessage = validation.Error;
+            return;
+        }
+
+        selectedFile = file;
+    }
+
+    private async Task UploadAsync()
+    {
+        if (selectedFile is null) return;
+
+        try
+        {
+            IsUploading = true;
+            ErrorMessage = null;
+
+            var stream = selectedFile.OpenReadStream(MaxFileSize);
+
+            var upload = new ProductoImageUpload
+                {
+                    Stream = stream,
+                    FileName = selectedFile.Name,
+                    ContentType = selectedFile.ContentType,
+                    Length = selectedFile.Size,
+                    EsPrincipal = esPrincipal,
+                };
+
+            await OnUpload.InvokeAsync(upload);
+
+            selectedFile = null;
+            esPrincipal = false;
+        }
+        catch(Exception e)
+        {
+            ErrorMessage = $"No fue posible cargar la imagen. {e.Message}";
+        }
+        finally
+        {
+            IsUploading = false;
+        }
+    }
+}
