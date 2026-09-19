@@ -1,4 +1,4 @@
-﻿@page "/productos/editar/{Id:int}"
+﻿@page "/productos/editar/{LocalId:guid}"
 
 @using PedidoNet.UI.Shared.Components.Productos
 @using PedidoNet.UI.Shared.Models.Productos
@@ -54,6 +54,7 @@
 
 @code {
     [Parameter]
+    public Guid LocalId { get; set; }
     public int Id { get; set; }
 
     private ProductoFormModel model = new();
@@ -68,7 +69,7 @@
         try
         {
             var producto =
-                await ProductoService.ObtenerPorIdAsync(Id);
+                await ProductoService.ObtenerPorLocalIdAsync(LocalId);
 
             if (producto is null)
             {
@@ -114,7 +115,7 @@
             };
 
             await ProductoService.ActualizarAsync(
-                Id,
+                LocalId,
                 request);
 
             Navigation.NavigateTo("/productos");

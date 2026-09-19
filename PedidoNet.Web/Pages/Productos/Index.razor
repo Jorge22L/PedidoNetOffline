@@ -3,9 +3,11 @@
 
 @using PedidoNet.Web.Models.Productos
 @using PedidoNet.Web.Services
+@using PedidoNet.Web.Services.Offline
 @using PedidoNet.Web.Services.Productos
 
 @inject IProductoService ProductoService
+@inject ProductoSyncService ProductoSync
 @inject ConnectivityService Connectivity
 @inject NavigationManager Navigation
 
@@ -16,8 +18,7 @@
         <Actions>
             <button type="button"
                     class="btn btn-primary px-3"
-                    @onclick="NuevoProducto"
-                    disabled="@(!Connectivity.IsOnline)">
+                    @onclick="NuevoProducto">
                 Nuevo producto
             </button>
         </Actions>
@@ -97,8 +98,7 @@
                 <td class="text-end">
                     <button type="button"
                             class="btn btn-sm btn-outline-primary me-2"
-                            @onclick="@(() => OnEditar(producto))"
-                            disabled="@(!Connectivity.IsOnline)">
+                            @onclick="@(() => OnEditar(producto))">
                         Editar
                     </button>
 
@@ -125,70 +125,28 @@
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            Connectivity.ConnectivityChanged += OnConnectivityChanged;
-            productos = await ProductoService.ObtenerTodosAsync();
-        }
-        catch (UnauthorizedAccessException)
-        {
-            Navigation.NavigateTo("/login");
-        }
-        catch (HttpRequestException ex)
-        {
-            errorMessage =
-                $"No fue posible consultar los productos. {ex.Message}";
-        }
-        catch(Exception ex)
-        {
-            errorMessage = $"Error inesperado: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
+        Connectivity.ConnectivityChanged += OnConnectivityChanged;
 
-    private void OnConnectivityChanged()
-    {
-        InvokeAsync(async () =>
-        {
-            if (Connectivity.IsOnline)
-            {
-                await CargarProductosAsync();
-            }
-
-            StateHasChanged();
-        });
+        await CargarProductosAsync();
     }
 
     private void OnEditar(ProductosDto producto)
     {
         Navigation.NavigateTo(
-            $"/productos/editar/{producto.ProductoId}");
+            $"/productos/editar/{producto.LocalId}");
     }
 
     private async Task OnEliminar(ProductosDto producto)
     {
         await ProductoService.EliminarAsync(
-            producto.ProductoId);
+            producto.LocalId);
 
         await CargarProductosAsync();
     }
 
     private async Task CargarProductosAsync()
     {
-        if (!Connectivity.IsOnline)
-        {
-            isLoading = false;
-            if(productos.Count == 0)
-            {
-                errorMessage = "Sin conexión. No es posible consultar productos.";
-            }
-
-            return;
-        }
-
+        
         try
         {
             isLoading = true;
@@ -222,5 +180,26 @@
     public void Dispose()
     {
         Connectivity.ConnectivityChanged -= OnConnectivityChanged;
+    }
+
+    private void OnConnectivityChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (Connectivity.IsOnline)
+            {
+                try
+                {
+                    await ProductoSync.SynchronizeAsync();
+                    productos = await ProductoService.ObtenerTodosAsync();
+                }
+                catch
+                {
+
+                }
+            }
+
+            StateHasChanged();
+        });
     }
 }

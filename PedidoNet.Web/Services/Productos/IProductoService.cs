@@ -5,16 +5,18 @@ namespace PedidoNet.Web.Services.Productos
 {
     public interface IProductoService
     {
-        Task<List<ProductosDto>> ObtenerTodosAsync();
+        Task<List<ProductosDto>> ObtenerTodosAsync(CancellationToken cancellation = default);
 
-        Task<ProductosDto?> ObtenerPorIdAsync(int id);
+        Task<ProductosDto?> ObtenerPorLocalIdAsync(Guid localId, CancellationToken cancellationToken = default);
 
-        Task CrearAsync(CrearProductoRequest model);
+        Task<Guid> CrearAsync(CrearProductoRequest model, CancellationToken cancellationToken = default);
 
-        Task ActualizarAsync(int id,ActualizarProductoRequest model);
+        Task ActualizarAsync(Guid localId,ActualizarProductoRequest model, CancellationToken cancellationToken = default);
 
-        Task EliminarAsync(int id);
+        Task EliminarAsync(Guid localId, CancellationToken cancellationToken = default);
 
         Task<ProductoImagenDTO> SubirImagenAsync(int productoId, ProductoImageUpload image, CancellationToken cancellationToken = default);
+
+        string ObtenerUrlImagen(string ruta);
     }
 }

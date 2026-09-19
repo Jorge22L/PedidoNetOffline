@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using PedidoNet.UI.Shared.Offline.Productos;
 using PedidoNet.Web;
 using PedidoNet.Web.Models.Auth;
 using PedidoNet.Web.Services;
 using PedidoNet.Web.Services.Api;
+using PedidoNet.Web.Services.Offline;
 using PedidoNet.Web.Services.Productos;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -26,6 +28,9 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ProductosApiClient>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
 builder.Services.AddScoped<ConnectivityService>();
+builder.Services.AddScoped<IProductoOfflineStore, IndexedDbProductoStore>();
+builder.Services.AddScoped<IProductoSyncQueue, IndexedDbProductoSyncQueue>();
+builder.Services.AddScoped<ProductoSyncService>();
 
 
 await builder.Build().RunAsync();

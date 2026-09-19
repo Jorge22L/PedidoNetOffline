@@ -18,25 +18,6 @@ namespace PedidoNet.Web.Services.Api
             _tokenStorage = tokenStorage;
         }
 
-        public async Task<List<ProductosDto>> GetAllSync()
-        {
-            var token = await _tokenStorage.GetAccessTokenAsync();
-            if (string.IsNullOrWhiteSpace(token))
-            {
-                throw new UnauthorizedAccessException();
-            }
-
-            using var request = new HttpRequestMessage(HttpMethod.Get, "api/Producto");
-
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-
-            using var response = await _httpClient.SendAsync(request);
-
-            response.EnsureSuccessStatusCode();
-
-            return await response.Content.ReadFromJsonAsync<List<ProductosDto>>() ?? [];
-        }
-
         private async Task<HttpRequestMessage> CreateRequestAsync(
        HttpMethod method,
        string url)
@@ -60,21 +41,15 @@ namespace PedidoNet.Web.Services.Api
         }
 
         // LISTAR
-        public async Task<List<ProductosDto>> GetAllAsync()
+        public async Task<List<ProductosDto>> GetAllAsync(CancellationToken cancellationToken = default)
         {
-            using var request =
-                await CreateRequestAsync(
-                    HttpMethod.Get,
-                    "api/Producto");
+            using var request = await CreateRequestAsync(HttpMethod.Get,"api/Producto");
 
-            using var response =
-                await _httpClient.SendAsync(request);
+            using var response = await _httpClient.SendAsync(request);
 
             response.EnsureSuccessStatusCode();
 
-            return await response.Content
-                       .ReadFromJsonAsync<List<ProductosDto>>()
-                   ?? [];
+            return await response.Content.ReadFromJsonAsync<List<ProductosDto>>(cancellationToken: cancellationToken) ?? [];
         }
 
         // OBTENER POR ID
@@ -100,49 +75,40 @@ namespace PedidoNet.Web.Services.Api
         }
 
         // CREAR
-        public async Task CreateAsync(
-            CrearProductoRequest model)
+        public async Task<ProductosDto> CreateAsync(CrearProductoRequest model, CancellationToken cancellationToken = default)
         {
-            using var request =
-                await CreateRequestAsync(
-                    HttpMethod.Post,
-                    "api/Producto");
+            using var request = await CreateRequestAsync(HttpMethod.Post,"api/Producto");
 
             request.Content = JsonContent.Create(model);
 
             using var response =
-                await _httpClient.SendAsync(request);
+                await _httpClient.SendAsync(request, cancellationToken);
 
             await EnsureSuccessAsync(response);
+
+            var producto = await response.Content.ReadFromJsonAsync<ProductosDto>(cancellationToken: cancellationToken);
+
+            return producto ?? throw new InvalidOperationException("La API creó el producto, pero no devolvió el recurso");
         }
 
         // ACTUALIZAR
-        public async Task UpdateAsync(
-            int id,
-            ActualizarProductoRequest model)
+        public async Task UpdateAsync(int id, ActualizarProductoRequest model, CancellationToken cancellationToken = default)
         {
-            using var request =
-                await CreateRequestAsync(
-                    HttpMethod.Put,
-                    $"api/Producto/{id}");
+            using var request =await CreateRequestAsync(HttpMethod.Put,$"api/Producto/{id}");
 
             request.Content = JsonContent.Create(model);
 
-            using var response =
-                await _httpClient.SendAsync(request);
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
 
             await EnsureSuccessAsync(response);
         }
 
         // ELIMINAR
-        public async Task DeleteAsync(int id)
+        public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
         {
-            using var request =await CreateRequestAsync(
-                    HttpMethod.Delete,
-                    $"api/Producto/{id}");
+            using var request = await CreateRequestAsync(HttpMethod.Delete,$"api/Producto/{id}");
 
-            using var response =
-                await _httpClient.SendAsync(request);
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
 
             await EnsureSuccessAsync(response);
         }
@@ -171,20 +137,20 @@ namespace PedidoNet.Web.Services.Api
             return result ?? throw new InvalidOperationException("La API no devolvió información de la imagen");
         }
 
-        private static async Task EnsureSuccessAsync(
-            HttpResponseMessage response)
+        private static async Task EnsureSuccessAsync(HttpResponseMessage response)
         {
             if (response.IsSuccessStatusCode)
             {
                 return;
             }
 
-            var content =
-                await response.Content.ReadAsStringAsync();
+            var content = await response.Content.ReadAsStringAsync();
 
             throw new HttpRequestException(
                 $"API respondió {(int)response.StatusCode} " +
-                $"{response.StatusCode}. Respuesta: {content}");
+                $"{response.StatusCode}. Respuesta: {content}",
+                inner: null,
+                response.StatusCode);
         }
     }
 }
