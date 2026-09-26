@@ -43,7 +43,7 @@ namespace PedidoNet.Web.Services.Api
         // LISTAR
         public async Task<List<ProductosDto>> GetAllAsync(CancellationToken cancellationToken = default)
         {
-            using var request = await CreateRequestAsync(HttpMethod.Get,"api/Producto");
+            using var request = await CreateRequestAsync(HttpMethod.Get,"api/v1/Producto");
 
             using var response = await _httpClient.SendAsync(request);
 
@@ -58,7 +58,7 @@ namespace PedidoNet.Web.Services.Api
             using var request =
                 await CreateRequestAsync(
                     HttpMethod.Get,
-                    $"api/Producto/{id}");
+                    $"api/v1/Producto/{id}");
 
             using var response =
                 await _httpClient.SendAsync(request);
@@ -77,7 +77,7 @@ namespace PedidoNet.Web.Services.Api
         // CREAR
         public async Task<ProductosDto> CreateAsync(CrearProductoRequest model, CancellationToken cancellationToken = default)
         {
-            using var request = await CreateRequestAsync(HttpMethod.Post,"api/Producto");
+            using var request = await CreateRequestAsync(HttpMethod.Post,"api/v1/Producto");
 
             request.Content = JsonContent.Create(model);
 
@@ -94,7 +94,7 @@ namespace PedidoNet.Web.Services.Api
         // ACTUALIZAR
         public async Task UpdateAsync(int id, ActualizarProductoRequest model, CancellationToken cancellationToken = default)
         {
-            using var request =await CreateRequestAsync(HttpMethod.Put,$"api/Producto/{id}");
+            using var request =await CreateRequestAsync(HttpMethod.Put,$"api/v1/Producto/{id}");
 
             request.Content = JsonContent.Create(model);
 
@@ -106,7 +106,7 @@ namespace PedidoNet.Web.Services.Api
         // ELIMINAR
         public async Task DeleteAsync(int id, CancellationToken cancellationToken = default)
         {
-            using var request = await CreateRequestAsync(HttpMethod.Delete,$"api/Producto/{id}");
+            using var request = await CreateRequestAsync(HttpMethod.Delete,$"api/v1/Producto/{id}");
 
             using var response = await _httpClient.SendAsync(request, cancellationToken);
 
@@ -116,7 +116,7 @@ namespace PedidoNet.Web.Services.Api
         // SUBIR IMAGEN
         public async Task<ProductoImagenDTO> UploadImageAsync(int productoId, ProductoImageUpload image, CancellationToken cancellationToken)
         {
-            using var request = await CreateRequestAsync(HttpMethod.Post, $"api/Producto/{productoId}/imagenes");
+            using var request = await CreateRequestAsync(HttpMethod.Post, $"api/v1/Producto/{productoId}/imagenes");
 
             using var content = new MultipartFormDataContent();
 
