@@ -6,6 +6,7 @@ namespace PedidoNet.Web.Models.Productos
     public class ProductosDto
     {
         public Guid LocalId { get; set; }
+        public Guid? ClientId { get; set; }
         public int? ProductoId { get; set; }
 
         public string? Codigo { get; set; }

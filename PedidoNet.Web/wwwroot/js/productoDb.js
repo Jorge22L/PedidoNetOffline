@@ -92,6 +92,22 @@
         })
     }
 
+    async function clear(storeName) {
+        const db = await openDb()
+
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(storeName, "readwrite")
+
+            const store = transaction.objectStore(storeName)
+
+            const request = store.clear()
+
+            request.onsuccess = () => resolve()
+
+            request.onerror = () => reject(request.error)
+        })
+    }
+
     return {
         getProductos: () => getAll(productoStore),
 
@@ -100,6 +116,8 @@
         putProducto: producto => put(productoStore, producto),
 
         deleteProducto: localId => remove(productoStore, localId),
+
+        clearProductos: () => clear(productoStore),
 
         getSyncOperations: () => getAll(syncStore),
 

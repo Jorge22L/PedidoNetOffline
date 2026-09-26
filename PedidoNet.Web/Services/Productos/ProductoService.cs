@@ -104,6 +104,15 @@ namespace PedidoNet.Web.Services.Productos
             producto.TieneISC = model.TieneISC;
             producto.LastModifiedUtc = DateTime.UtcNow;
 
+            if (producto.ProductoId.HasValue)
+            {
+                producto.SyncStatus = UI.Shared.Offline.SyncStatus.PendingUpdate;
+            }
+            else
+            {
+                producto.SyncStatus = UI.Shared.Offline.SyncStatus.PendingCreate;
+            }
+
             await _localStore.UpsertAsync(producto, cancellationToken);
 
             if (producto.ProductoId.HasValue)
@@ -120,7 +129,6 @@ namespace PedidoNet.Web.Services.Productos
                 catch (HttpRequestException)
                 {
 
-                    // Permanece pendiente
                 }
             }
 
@@ -210,6 +218,7 @@ namespace PedidoNet.Web.Services.Productos
             return new ProductosDto
             {
                 LocalId = local.LocalId,
+                ClientId = local.LocalId,
                 ProductoId = local.ProductoId,
 
                 Codigo = local.Codigo,
@@ -232,35 +241,74 @@ namespace PedidoNet.Web.Services.Productos
                     continue;
                 }
 
-                var local = await _localStore.GetByserverIdAsync(remote.ProductoId.Value, cancellationToken);
+                ProductoLocal? local = null;
 
-                if (local is not null && local.SyncStatus != UI.Shared.Offline.SyncStatus.Synced)
+                /*
+                 * Primero se intenta reconciliar usando ClientId.
+                 *
+                 * ClientId del servidor representa exactamente
+                 * el LocalId con el que el producto fue creado
+                 * originalmente en el cliente.
+                 */
+                if (remote.ClientId.HasValue && remote.ClientId.Value != Guid.Empty)
+                {
+                    local = await _localStore.GetByLocalIdAsync(remote.ClientId.Value,cancellationToken);
+                }
+
+                /*
+                 * Productos antiguos creados antes de agregar ClientId
+                 * se siguen relacionando mediante ProductoId.
+                 */
+                if (local is null)
+                {
+                    local = await _localStore.GetByserverIdAsync(remote.ProductoId.Value,cancellationToken);
+                }
+
+                /*
+                 * Nunca sobrescribir cambios locales
+                 * que todavía están pendientes de enviarse.
+                 */
+                if (local is not null &&
+                    (local.SyncStatus ==
+                        UI.Shared.Offline.SyncStatus.PendingUpdate ||
+                     local.SyncStatus ==
+                        UI.Shared.Offline.SyncStatus.PendingDelete))
                 {
                     continue;
                 }
 
-                if(local is null)
+                if (local is null)
                 {
                     local = new ProductoLocal
                     {
-                        LocalId = Guid.NewGuid()
+                        LocalId = remote.ClientId.HasValue &&
+                                  remote.ClientId.Value != Guid.Empty
+                                  ? remote.ClientId.Value
+                                  : Guid.NewGuid()
                     };
                 }
 
-                local.ProductoId = remote.ProductoId;
+                local.ProductoId = remote.ProductoId.Value;
 
                 local.Codigo = remote.Codigo;
+
                 local.Nombre = remote.Nombre;
+
                 local.PrecioVenta = remote.PrecioVenta;
+
                 local.Existencias = remote.Existencias;
+
                 local.TieneIVA = remote.TieneIVA;
+
                 local.TieneISC = remote.TieneISC;
 
                 local.SyncStatus = UI.Shared.Offline.SyncStatus.Synced;
+
                 local.isDeleted = false;
+
                 local.LastModifiedUtc = DateTime.UtcNow;
 
-                await _localStore.UpsertAsync(local, cancellationToken);
+                await _localStore.UpsertAsync(local,cancellationToken);
             }
         }
 

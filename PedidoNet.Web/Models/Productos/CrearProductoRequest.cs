@@ -4,6 +4,7 @@ namespace PedidoNet.Web.Models.Productos
 {
     public class CrearProductoRequest
     {
+        public Guid ClientId { get; set; }
         [Required(ErrorMessage = "Código es requerido")]
         [StringLength(20, ErrorMessage = "Máximo 20 caracteres")]
         public string? Codigo { get; set; }

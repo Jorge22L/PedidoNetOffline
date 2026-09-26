@@ -12,6 +12,7 @@
 @inject NavigationManager Navigation
 
 <div class="container-fluid px-3 px-md-4 py-4">
+
     <PageHeader Title="Catálogo de productos"
                 Description="Administra los productos disponibles.">
 
@@ -24,19 +25,20 @@
         </Actions>
 
     </PageHeader>
+
     @if (!Connectivity.IsOnline)
     {
-         <div class="offline-banner mb-4">
-             <div>
-                 <div class="fw-bold">
-                     Estás trabajando sin conexión.
-                 </div>
+        <div class="offline-banner mb-4">
+            <div>
+                <div class="fw-bold">
+                    Estás trabajando sin conexión.
+                </div>
 
-                 <div class="small">
-                     Puedes continuar usando la aplicación, pero las operaciones requieren conexión con la API.
-                 </div>
-             </div>
-         </div>
+                <div class="small">
+                    Los cambios se guardarán localmente y se sincronizarán cuando vuelva la conexión.
+                </div>
+            </div>
+        </div>
     }
 
     @if (isLoading)
@@ -56,7 +58,7 @@
     }
     else
     {
-        <DataTable TItem="PedidoNet.Web.Models.Productos.ProductosDto"
+        <DataTable TItem="ProductosDto"
                    Items="@productos"
                    ColumnCount="7"
                    EmptyMessage="No hay productos registrados.">
@@ -96,6 +98,7 @@
                 </td>
 
                 <td class="text-end">
+
                     <button type="button"
                             class="btn btn-sm btn-outline-primary me-2"
                             @onclick="@(() => OnEditar(producto))">
@@ -104,19 +107,24 @@
 
                     <button type="button"
                             class="btn btn-sm btn-outline-danger"
-                            @onclick="@(() => OnEliminar(producto))"
-                            disabled="@(!Connectivity.IsOnline)">
+                            @onclick="@(() => OnEliminar(producto))">
                         Eliminar
                     </button>
+
                 </td>
 
             </RowTemplate>
 
         </DataTable>
     }
+
 </div>
 
 @code {
+
+    private readonly SemaphoreSlim _loadLock =
+        new(1, 1);
+
     private List<ProductosDto> productos = [];
 
     private bool isLoading = true;
@@ -125,7 +133,8 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Connectivity.ConnectivityChanged += OnConnectivityChanged;
+        Connectivity.ConnectivityChanged +=
+            OnConnectivityChanged;
 
         await CargarProductosAsync();
     }
@@ -138,68 +147,118 @@
 
     private async Task OnEliminar(ProductosDto producto)
     {
-        await ProductoService.EliminarAsync(
-            producto.LocalId);
-
-        await CargarProductosAsync();
-    }
-
-    private async Task CargarProductosAsync()
-    {
-        
         try
         {
-            isLoading = true;
             errorMessage = null;
 
-            productos = await ProductoService.ObtenerTodosAsync();
+            await ProductoService.EliminarAsync(
+                producto.LocalId);
+
+            await CargarProductosAsync();
         }
         catch (UnauthorizedAccessException)
         {
             Navigation.NavigateTo("/login");
         }
-        catch(HttpRequestException e)
+        catch (Exception e)
         {
-            errorMessage = $"No fue posible consultar los productos ${e.Message}";
+            errorMessage =
+                $"No fue posible eliminar el producto: {e.Message}";
         }
-        catch(Exception e)
+    }
+
+    private async Task CargarProductosAsync()
+    {
+        await _loadLock.WaitAsync();
+
+        try
         {
-            errorMessage = $"Error inesperado: {e.Message}";
+            isLoading = true;
+            errorMessage = null;
+
+            productos =
+                await ProductoService.ObtenerTodosAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException e)
+        {
+            errorMessage =
+                $"No fue posible consultar los productos: {e.Message}";
+        }
+        catch (Exception e)
+        {
+            errorMessage =
+                $"Error inesperado: {e.Message}";
         }
         finally
         {
             isLoading = false;
+
+            _loadLock.Release();
         }
     }
 
     private void NuevoProducto()
     {
-        Navigation.NavigateTo("/productos/crear");
-    }
-
-    public void Dispose()
-    {
-        Connectivity.ConnectivityChanged -= OnConnectivityChanged;
+        Navigation.NavigateTo(
+            "/productos/crear");
     }
 
     private void OnConnectivityChanged()
     {
-        _ = InvokeAsync(async () =>
-        {
-            if (Connectivity.IsOnline)
-            {
-                try
-                {
-                    await ProductoSync.SynchronizeAsync();
-                    productos = await ProductoService.ObtenerTodosAsync();
-                }
-                catch
-                {
+        _ = InvokeAsync(
+            SincronizarAlReconectarAsync);
+    }
 
-                }
-            }
+    private async Task SincronizarAlReconectarAsync()
+    {
+        if (!Connectivity.IsOnline)
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await _loadLock.WaitAsync();
+
+        try
+        {
+            errorMessage = null;
+
+            await ProductoSync.SynchronizeAsync();
+
+            productos =
+                await ProductoService.ObtenerTodosAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException e)
+        {
+            errorMessage =
+                $"No fue posible sincronizar los productos: {e.Message}";
+        }
+        catch (Exception e)
+        {
+            errorMessage =
+                $"Error inesperado al sincronizar: {e.Message}";
+        }
+        finally
+        {
+            _loadLock.Release();
 
             StateHasChanged();
-        });
+        }
+    }
+
+    public void Dispose()
+    {
+        Connectivity.ConnectivityChanged -=
+            OnConnectivityChanged;
+
+        _loadLock.Dispose();
     }
 }

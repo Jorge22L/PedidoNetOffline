@@ -12,9 +12,9 @@ namespace PedidoNet.Web.Services.Offline
             _js = js;
         }
 
-        public async Task ClearAsync(CancellationToken cancellationToken = default)
+        public Task ClearAsync(CancellationToken cancellationToken = default)
         {
-            var productos = await GetAllAsync(cancellationToken);
+            return _js.InvokeVoidAsync("productoDb.clearProductos", cancellationToken).AsTask();
         }
 
         public Task DeleteAsync(Guid localId, CancellationToken cancellationToken = default)

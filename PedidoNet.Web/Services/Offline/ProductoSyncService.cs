@@ -110,14 +110,12 @@ namespace PedidoNet.Web.Services.Offline
             {
                 await _api.DeleteAsync(producto.ProductoId.Value, cancellationToken);
             }
-            catch(HttpRequestException ex)
+            catch(HttpRequestException ex) when(ex.StatusCode == HttpStatusCode.NotFound)
             {
-                // Delete se debe tratar como idempotente
-                // Si ya no existe en el servidor, nuestro objetivo
-                // ya está cumplido
-
-                await _store.DeleteAsync(producto.LocalId, cancellationToken);
+                // El producto ya no existe en el servidor
+                // El objetivo del DELETE ya fue alcanzado               
             }
+            await _store.DeleteAsync(producto.LocalId, cancellationToken);
         }
 
         private async Task ProcessUpdateAsync(ProductoLocal producto, CancellationToken cancellationToken)
@@ -158,6 +156,8 @@ namespace PedidoNet.Web.Services.Offline
 
             var request = new CrearProductoRequest
             {
+                ClientId = producto.LocalId,
+
                 Codigo = producto.Codigo,
                 Nombre = producto.Nombre,
                 PrecioVenta = producto.PrecioVenta,
@@ -167,6 +167,16 @@ namespace PedidoNet.Web.Services.Offline
             };
 
             var created = await _api.CreateAsync(request, cancellationToken);
+
+            if(!created.ProductoId.HasValue || created.ProductoId.Value <= 0)
+            {
+                throw new InvalidOperationException("La API no devolvió un ProductoId válido");
+            }
+
+            if(!created.ClientId.HasValue || created.ClientId.Value != producto.LocalId)
+            {
+                throw new InvalidOperationException("El ClientId devuelto por la API no coincide con el LocalId del producto.");
+            }
 
             // Este es el dato más importante
             producto.ProductoId = created.ProductoId;
