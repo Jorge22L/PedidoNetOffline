@@ -1,0 +1,41 @@
+﻿@inject IHttpClientFactory HttpClientFactory
+
+<h3>Prueba de API</h3>
+
+<button @onclick="MostrarUrl">
+    Mostrar URL
+</button>
+
+<button @onclick="ProbarConexion">
+    Probar conexión
+</button>
+
+<p>@mensaje</p>
+
+@code {
+    private string mensaje = "";
+
+    private void MostrarUrl()
+    {
+        var client = HttpClientFactory.CreateClient("PedidoNetApi");
+
+        mensaje = client.BaseAddress?.ToString() ?? "Sin BaseAddress";
+    }
+
+    private async Task ProbarConexion()
+    {
+        try
+        {
+            mensaje = "Conectando...";
+
+            var client = HttpClientFactory.CreateClient("PedidoNetApi");
+            var response = await client.GetAsync("api/v1/Producto");
+
+            mensaje = $"Código HTTP: {(int)response.StatusCode}" + response.StatusCode;
+        }
+        catch(Exception e)
+        {
+            mensaje = $"Error: {e.Message}";
+        }
+    }
+}

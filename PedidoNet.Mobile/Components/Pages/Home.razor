@@ -1,7 +1,11 @@
 ﻿@page "/"
 @using PedidoNet.UI.Shared.Components.Shared
 
-<AppTittle />
-<p>Cliente Mobile</p>
+@inject IHttpClientFactory HttpClientFactory
 
-Welcome to your new app.
+<AppTittle />
+<h3>PedidoNet Mobile</h3>
+
+<p>Prueba de comunicación con la API</p>
+
+<ApiTest></ApiTest>
