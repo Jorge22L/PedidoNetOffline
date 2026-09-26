@@ -1,11 +1,60 @@
 ﻿@page "/"
+@using PedidoNet.Mobile.Models.Auth
+@using PedidoNet.Mobile.Service.Api
 @using PedidoNet.UI.Shared.Components.Shared
 
-@inject IHttpClientFactory HttpClientFactory
+@inject AuthApiClient AuthApiClient
+@inject ITokenStorage TokenStorage
 
-<AppTittle />
-<h3>PedidoNet Mobile</h3>
+<div>
+    <label>Usuario</label>
+    <input @bind="usuario" />
+</div>
+<div>
+    <label>Contraseña</label>
+    <input type="password" @bind="password" />
+</div>
 
-<p>Prueba de comunicación con la API</p>
+<button @onclick="ProbarLogin">
+    Probar Login
+</button>
 
-<ApiTest></ApiTest>
+<p>@mensaje</p>
+
+    
+@code {
+    private string usuario = string.Empty;
+    private string password = string.Empty;
+    private string mensaje = "Sin probar";
+
+    private async Task ProbarLogin()
+    {
+        try
+        {
+            mensaje = "Autenticando...";
+
+            var request = new LoginRequest
+            {
+                NombreUsuario = usuario,
+                Password = password
+            };
+
+            var response = await AuthApiClient.LoginAsync(request);
+
+            if(response is null)
+            {
+                mensaje = "Usuario o contraseña incorrectos";
+
+                return;
+            }
+
+            await TokenStorage.SaveAsync(response);
+
+            mensaje = $"Bienvenido {response.NombreUsuario}. Rol: {response.Rol}";
+        }
+        catch(Exception e)
+        {
+            mensaje = $"Error: {e.Message}";
+        }
+    }
+}

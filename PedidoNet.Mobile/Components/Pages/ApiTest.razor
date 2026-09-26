@@ -1,41 +1,62 @@
-﻿@inject IHttpClientFactory HttpClientFactory
+﻿@using PedidoNet.Mobile.Models.Auth
+
+@inject IHttpClientFactory HttpClientFactory
+@inject ITokenStorage TokenStorage
 
 <h3>Prueba de API</h3>
 
-<button @onclick="MostrarUrl">
-    Mostrar URL
+<button class="btn btn-primary" @onclick="GuardarPrueba">
+    Guardar sesión de prueba
 </button>
 
-<button @onclick="ProbarConexion">
-    Probar conexión
+<button class="btn btn-secondary" @onclick="LeerPrueba">
+    Leer sesión
+</button>
+
+<button class="btn btn-danger" @onclick="BorrarPrueba">
+    Borrar Sesión
 </button>
 
 <p>@mensaje</p>
 
 @code {
-    private string mensaje = "";
+    private string mensaje = "Sin probar";
 
-    private void MostrarUrl()
+    private async Task GuardarPrueba()
     {
-        var client = HttpClientFactory.CreateClient("PedidoNetApi");
+        var session = new LoginResponse
+        {
+            AccessToken = "TOKEN-PRUEBA",
+            RefreshToken = "REFRESH-PRUEBA",
+            NombreUsuario = "USUARIO-PRUEBA",
+            Rol = "Administrador",
+            ExpiranEn = DateTime.Now.AddHours(1),
+            RefreshTokenExpiraEn = DateTime.Now.AddDays(7)
 
-        mensaje = client.BaseAddress?.ToString() ?? "Sin BaseAddress";
+        };
+
+        await TokenStorage.SaveAsync(session);
+
+        mensaje = "Sesión guardada";
     }
 
-    private async Task ProbarConexion()
+    private async Task LeerPrueba()
     {
-        try
-        {
-            mensaje = "Conectando...";
+        var session = await TokenStorage.GetAsync();
 
-            var client = HttpClientFactory.CreateClient("PedidoNetApi");
-            var response = await client.GetAsync("api/v1/Producto");
-
-            mensaje = $"Código HTTP: {(int)response.StatusCode}" + response.StatusCode;
-        }
-        catch(Exception e)
+        if(session is null)
         {
-            mensaje = $"Error: {e.Message}";
+            mensaje = "No existe sesion";
+            return;
         }
+
+        mensaje = $"Usuario: {session.NombreUsuario} | Rol: {session.Rol}";
+    }
+
+    private async Task BorrarPrueba()
+    {
+        await TokenStorage.ClearAsync();
+        mensaje = "Sesión Eliminada";
+
     }
 }

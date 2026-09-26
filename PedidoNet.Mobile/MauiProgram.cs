@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using PedidoNet.Mobile.Configuration;
+using PedidoNet.Mobile.Models.Auth;
 using PedidoNet.Mobile.Service.Api;
+using PedidoNet.Mobile.Service.Auth;
 
 namespace PedidoNet.Mobile
 {
@@ -17,6 +19,9 @@ namespace PedidoNet.Mobile
                 });
 
             builder.Services.AddMauiBlazorWebView();
+
+            builder.Services.AddSingleton<ITokenStorage, MauiTokenStorage>();
+            builder.Services.AddScoped<AuthApiClient>();
 
             string baseUrl = ApiConfiguration.GetBaseUrl();
 
