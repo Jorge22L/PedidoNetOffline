@@ -1,8 +1,7 @@
 ﻿@page "/"
 @using PedidoNet.UI.Shared.Auth
 
-@inject AuthApiClient AuthApiClient
-@inject ITokenStorage TokenStorage
+@inject IAuthService AuthService
 
 <div>
     <label>Usuario</label>
@@ -37,24 +36,26 @@
                 Password = password
             };
 
-            var response = await AuthApiClient.LoginAsync(request);
+            var loginCorrecto =
+                await AuthService.LoginAsync(request);
 
-            if (response is null)
+            if (!loginCorrecto)
             {
-                mensaje = "No se recibió respuesta del servidor.";
+                mensaje = "Usuario o contraseña incorrectos.";
                 return;
             }
 
-            if (!response.Success || response.Data is null)
+            var session =
+                await AuthService.GetSessionAsync();
+
+            if (session is null)
             {
-                mensaje = response.Message ?? "Usuario o contraseña incorrectos.";
+                mensaje = "No fue posible recuperar la sesión.";
                 return;
             }
-
-            await TokenStorage.SaveAsync(response.Data);
 
             mensaje =
-                $"Bienvenido {response.Data.NombreUsuario}. Rol: {response.Data.Rol}";
+                $"Bienvenido {session.NombreUsuario}. Rol: {session.Rol}";
         }
         catch (Exception e)
         {

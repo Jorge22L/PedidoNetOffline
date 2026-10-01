@@ -25,7 +25,7 @@ builder.Services.AddScoped(sp => new HttpClient
 builder.Services.AddScoped<PedidoNet.UI.Shared.Auth.AuthApiClient>();
 
 builder.Services.AddScoped<ITokenStorage, TokenStorage>();
-builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IAuthService,PedidoNet.UI.Shared.Auth.AuthService>();
 builder.Services.AddScoped<PedidoNet.UI.Shared.Auth.AuthApiClient>();
 builder.Services.AddScoped<ProductosApiClient>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
