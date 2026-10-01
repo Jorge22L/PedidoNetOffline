@@ -1,7 +1,5 @@
 ﻿@page "/"
-@using PedidoNet.Mobile.Models.Auth
-@using PedidoNet.Mobile.Service.Api
-@using PedidoNet.UI.Shared.Components.Shared
+@using PedidoNet.UI.Shared.Auth
 
 @inject AuthApiClient AuthApiClient
 @inject ITokenStorage TokenStorage
@@ -10,6 +8,7 @@
     <label>Usuario</label>
     <input @bind="usuario" />
 </div>
+
 <div>
     <label>Contraseña</label>
     <input type="password" @bind="password" />
@@ -21,7 +20,6 @@
 
 <p>@mensaje</p>
 
-    
 @code {
     private string usuario = string.Empty;
     private string password = string.Empty;
@@ -41,18 +39,24 @@
 
             var response = await AuthApiClient.LoginAsync(request);
 
-            if(response is null)
+            if (response is null)
             {
-                mensaje = "Usuario o contraseña incorrectos";
-
+                mensaje = "No se recibió respuesta del servidor.";
                 return;
             }
 
-            await TokenStorage.SaveAsync(response);
+            if (!response.Success || response.Data is null)
+            {
+                mensaje = response.Message ?? "Usuario o contraseña incorrectos.";
+                return;
+            }
 
-            mensaje = $"Bienvenido {response.NombreUsuario}. Rol: {response.Rol}";
+            await TokenStorage.SaveAsync(response.Data);
+
+            mensaje =
+                $"Bienvenido {response.Data.NombreUsuario}. Rol: {response.Data.Rol}";
         }
-        catch(Exception e)
+        catch (Exception e)
         {
             mensaje = $"Error: {e.Message}";
         }

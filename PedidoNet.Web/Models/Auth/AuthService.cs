@@ -1,4 +1,5 @@
-﻿using PedidoNet.Web.Services.Api;
+﻿using PedidoNet.UI.Shared.Auth;
+using PedidoNet.Web.Services.Api;
 
 namespace PedidoNet.Web.Models.Auth
 {
@@ -19,8 +20,13 @@ namespace PedidoNet.Web.Models.Auth
 
         public async Task<bool> LoginAsync(LoginRequest request)
         {
+            ArgumentNullException.ThrowIfNull(request);
+
             var response = await _apiClient.LoginAsync(request);
-            if(response is null || !response.Success || response.Data is null)
+
+            if (response is null ||
+                !response.Success ||
+                response.Data is null)
             {
                 return false;
             }

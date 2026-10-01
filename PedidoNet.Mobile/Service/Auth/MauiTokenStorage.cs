@@ -1,4 +1,4 @@
-﻿using PedidoNet.Mobile.Models.Auth;
+﻿using PedidoNet.UI.Shared.Auth;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -13,18 +13,21 @@ namespace PedidoNet.Mobile.Service.Auth
         public Task ClearAsync()
         {
             SecureStorage.Default.Remove(SessionKey);
+
             return Task.CompletedTask;
         }
 
         public async Task<string?> GetAccessTokenAsync()
         {
             var session = await GetAsync();
+
             return session?.AccessToken;
         }
 
         public async Task<LoginResponse?> GetAsync()
         {
             var json = await SecureStorage.Default.GetAsync(SessionKey);
+
             if (string.IsNullOrWhiteSpace(json))
             {
                 return null;
@@ -37,7 +40,9 @@ namespace PedidoNet.Mobile.Service.Auth
         {
             var json = JsonSerializer.Serialize(session);
 
-            await SecureStorage.Default.SetAsync(SessionKey, json);
+            await SecureStorage.Default.SetAsync(
+                SessionKey,
+                json);
         }
     }
 }

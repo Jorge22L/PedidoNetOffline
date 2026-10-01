@@ -1,4 +1,5 @@
-﻿using PedidoNet.UI.Shared.Models.Productos;
+﻿using PedidoNet.UI.Shared.Auth;
+using PedidoNet.UI.Shared.Models.Productos;
 using PedidoNet.Web.Models.Auth;
 using PedidoNet.Web.Models.Productos;
 using System.Net;

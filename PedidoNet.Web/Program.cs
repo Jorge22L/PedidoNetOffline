@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using PedidoNet.UI.Shared.Auth;
 using PedidoNet.UI.Shared.Offline.Productos;
 using PedidoNet.Web;
 using PedidoNet.Web.Models.Auth;
@@ -21,10 +22,11 @@ builder.Services.AddScoped(sp => new HttpClient
     BaseAddress = new Uri(apiBaseUrl)
 });
 
-builder.Services.AddScoped<AuthApiClient>();
+builder.Services.AddScoped<PedidoNet.UI.Shared.Auth.AuthApiClient>();
 
 builder.Services.AddScoped<ITokenStorage, TokenStorage>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<PedidoNet.UI.Shared.Auth.AuthApiClient>();
 builder.Services.AddScoped<ProductosApiClient>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
 builder.Services.AddScoped<ConnectivityService>();

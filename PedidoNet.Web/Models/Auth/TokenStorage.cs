@@ -1,11 +1,13 @@
 ﻿using Microsoft.JSInterop;
+using PedidoNet.UI.Shared.Auth;
 using System.Text.Json;
 
 namespace PedidoNet.Web.Models.Auth
 {
-    public class TokenStorage : ITokenStorage
+    public sealed class TokenStorage : ITokenStorage
     {
         private const string SessionKey = "pedidonet_session";
+
         private readonly IJSRuntime _js;
 
         public TokenStorage(IJSRuntime js)
@@ -15,7 +17,9 @@ namespace PedidoNet.Web.Models.Auth
 
         public async Task ClearAsync()
         {
-            await _js.InvokeVoidAsync("localStorage.removeItem", SessionKey);
+            await _js.InvokeVoidAsync(
+                "localStorage.removeItem",
+                SessionKey);
         }
 
         public async Task<string?> GetAccessTokenAsync()
@@ -27,7 +31,10 @@ namespace PedidoNet.Web.Models.Auth
 
         public async Task<LoginResponse?> GetAsync()
         {
-            var json = await _js.InvokeAsync<string?>("localStorage.getItem", SessionKey);
+            var json = await _js.InvokeAsync<string?>(
+                "localStorage.getItem",
+                SessionKey);
+
             if (string.IsNullOrWhiteSpace(json))
             {
                 return null;
@@ -40,7 +47,10 @@ namespace PedidoNet.Web.Models.Auth
         {
             var json = JsonSerializer.Serialize(session);
 
-            await _js.InvokeVoidAsync("localStorage.setItem", SessionKey, json);
+            await _js.InvokeVoidAsync(
+                "localStorage.setItem",
+                SessionKey,
+                json);
         }
     }
 }

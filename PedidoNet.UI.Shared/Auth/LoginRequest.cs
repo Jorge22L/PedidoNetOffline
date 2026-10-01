@@ -1,8 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Text;
 
-namespace PedidoNet.Web.Models.Auth
+namespace PedidoNet.UI.Shared.Auth
 {
-    public class LoginRequest
+    public sealed class LoginRequest
     {
         [Required(ErrorMessage = "El usuario es requerido.")]
         public string NombreUsuario { get; set; } = string.Empty;

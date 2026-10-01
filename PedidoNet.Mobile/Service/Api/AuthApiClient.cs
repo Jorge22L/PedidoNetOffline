@@ -1,4 +1,4 @@
-﻿using PedidoNet.Mobile.Models.Auth;
+﻿using PedidoNet.UI.Shared.Auth;
 using System;
 using System.Collections.Generic;
 using System.Net.Http.Json;
@@ -16,28 +16,36 @@ namespace PedidoNet.Mobile.Service.Api
             _httpClient = httpClientFactory.CreateClient("PedidoNetApi");
         }
 
-        public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+        public async Task<LoginResponse?> LoginAsync(LoginRequest request,
+            CancellationToken cancellationToken = default)
         {
-            var response = await _httpClient.PostAsJsonAsync("api/v1/Auth/login", request, cancellationToken);
+            var response = await _httpClient.PostAsJsonAsync(
+                "api/v1/Auth/login",
+                request,
+                cancellationToken);
+
             if (!response.IsSuccessStatusCode)
             {
                 return null;
             }
 
-            using var jsonDocument = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken),
-                cancellationToken: cancellationToken);
+            using var jsonDocument =
+                await JsonDocument.ParseAsync(
+                    await response.Content.ReadAsStreamAsync(cancellationToken),
+                    cancellationToken: cancellationToken);
 
             var root = jsonDocument.RootElement;
 
-            if(!root.TryGetProperty("data", out var dataElement))
+            if (!root.TryGetProperty("data", out var dataElement))
             {
                 return null;
             }
 
-            return dataElement.Deserialize<LoginResponse>(new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            return dataElement.Deserialize<LoginResponse>(
+                new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿using PedidoNet.Web.Models;
+﻿using PedidoNet.UI.Shared.Api;
+using PedidoNet.UI.Shared.Auth;
+using PedidoNet.Web.Models;
 using PedidoNet.Web.Models.Auth;
 using System.Net.Http.Json;
 
