@@ -1,14 +1,15 @@
 ﻿@page "/productos"
+@attribute [Authorize]
 @implements IDisposable
 
 @using PedidoNet.UI.Shared.Models.Productos
-@using PedidoNet.Web.Services
-@using PedidoNet.Web.Services.Offline
-@using PedidoNet.Web.Services.Productos
+@using PedidoNet.UI.Shared.Offline
+@using PedidoNet.UI.Shared.Offline.Productos
+@using PedidoNet.UI.Shared.Productos
 
 @inject IProductoService ProductoService
 @inject ProductoSyncService ProductoSync
-@inject ConnectivityService Connectivity
+@inject IConnectivityService Connectivity
 @inject NavigationManager Navigation
 
 <div class="container-fluid px-3 px-md-4 py-4">
@@ -79,6 +80,20 @@
 
                 <td class="fw-semibold">
                     @producto.Nombre
+
+                    @if (producto.SyncStatus == SyncStatus.Failed)
+                    {
+                        <span class="badge text-bg-danger ms-2"
+                              title="Edita o elimina el producto para volver a intentarlo.">
+                            Error de sincronización
+                        </span>
+                    }
+                    else if (producto.PendingSync)
+                    {
+                        <span class="badge text-bg-warning ms-2">
+                            Pendiente
+                        </span>
+                    }
                 </td>
 
                 <td class="text-end">

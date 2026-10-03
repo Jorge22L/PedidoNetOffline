@@ -1,8 +1,9 @@
 ﻿@page "/productos/crear"
+@attribute [Authorize]
 
-@using PedidoNet.Web.Components.Productos
+@using PedidoNet.UI.Shared.Components.Productos
 @using PedidoNet.UI.Shared.Models.Productos
-@using PedidoNet.Web.Services.Productos
+@using PedidoNet.UI.Shared.Productos
 
 @inject IProductoService ProductoService
 @inject NavigationManager Navigation
@@ -58,6 +59,7 @@
                 TieneISC = model.TieneISC
             };
 
+            // Se guarda localmente y se sincroniza cuando haya conexión.
             await ProductoService.CrearAsync(request);
 
             Navigation.NavigateTo("/productos");
@@ -65,6 +67,10 @@
         catch (HttpRequestException ex)
         {
             errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"No fue posible guardar el producto. {ex.Message}";
         }
         finally
         {

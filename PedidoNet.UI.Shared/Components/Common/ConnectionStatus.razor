@@ -1,6 +1,6 @@
-﻿@using PedidoNet.Web.Services
+﻿@using PedidoNet.UI.Shared.Offline
 @implements IDisposable
-@inject ConnectivityService Connectivity
+@inject IConnectivityService Connectivity
 
 @if (Connectivity.IsOnline)
 {
@@ -18,7 +18,7 @@ else
 }
 
 @code {
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         Connectivity.ConnectivityChanged += OnConnectivityChanged;
     }

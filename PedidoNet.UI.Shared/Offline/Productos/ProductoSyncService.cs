@@ -1,10 +1,17 @@
 ﻿using PedidoNet.UI.Shared.Models.Productos;
-using PedidoNet.UI.Shared.Offline.Productos;
 using PedidoNet.UI.Shared.Productos;
 using System.Net;
+using System.Text.Json;
 
-namespace PedidoNet.Web.Services.Offline
+namespace PedidoNet.UI.Shared.Offline.Productos
 {
+    /*
+     * Lógica de sincronización compartida entre Web y Mobile.
+     *
+     * No depende de la plataforma: el almacenamiento local
+     * (IndexedDB / SQLite) llega por IProductoOfflineStore e
+     * IProductoSyncQueue, implementados en cada host.
+     */
     public sealed class ProductoSyncService
     {
         private readonly ProductosApiClient _api;
@@ -34,7 +41,9 @@ namespace PedidoNet.Web.Services.Offline
             {
                 var operations = await _queue.GetPendingAsync(cancellationToken);
 
-                foreach(var operation in operations .OrderBy(x => x.CreatedUtc))
+                foreach(var operation in operations
+                    .Where(x => !x.RequiresAttention)
+                    .OrderBy(x => x.CreatedUtc))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
@@ -44,18 +53,36 @@ namespace PedidoNet.Web.Services.Offline
 
                         await _queue.RemoveAsync(operation.OperationId, cancellationToken);
                     }
+                    catch(UnauthorizedAccessException)
+                    {
+                        /*
+                         * 401: AuthenticatedHttpHandler ya intentó
+                         * refresh + un reintento. La operación queda
+                         * intacta en la cola y la UI debe pedir login.
+                         */
+                        throw;
+                    }
                     catch(HttpRequestException ex) when(IsTransient(ex))
                     {
-                        await RegisterFailureAsync(operation, ex, cancellationToken);
+                        await RegisterTransientFailureAsync(operation, ex, cancellationToken);
                         // Si la api no está disponible
                         // no se necesita intentar las demás
 
                         break;
                     }
-                    catch(Exception ex)
+                    catch(TaskCanceledException ex) when(!cancellationToken.IsCancellationRequested)
                     {
-                        await RegisterFailureAsync(operation, ex, cancellationToken);
+                        // Timeout de HttpClient: también es transitorio.
+                        await RegisterTransientFailureAsync(operation, ex, cancellationToken);
 
+                        break;
+                    }
+                    catch(Exception ex) when(ex is HttpRequestException
+                                              or InvalidOperationException
+                                              or JsonException)
+                    {
+                        // 400, 403, 404, 409, 422, validación, respuesta inválida...
+                        await RegisterPermanentFailureAsync(operation, ex, cancellationToken);
                     }
                 }
             }
@@ -113,7 +140,7 @@ namespace PedidoNet.Web.Services.Offline
             catch(HttpRequestException ex) when(ex.StatusCode == HttpStatusCode.NotFound)
             {
                 // El producto ya no existe en el servidor
-                // El objetivo del DELETE ya fue alcanzado               
+                // El objetivo del DELETE ya fue alcanzado
             }
             await _store.DeleteAsync(producto.LocalId, cancellationToken);
         }
@@ -137,7 +164,7 @@ namespace PedidoNet.Web.Services.Offline
 
             await _api.UpdateAsync(producto.ProductoId.Value, request, cancellationToken);
 
-            producto.SyncStatus = UI.Shared.Offline.SyncStatus.Synced;
+            producto.SyncStatus = SyncStatus.Synced;
 
             await _store.UpsertAsync(producto, cancellationToken);
         }
@@ -147,13 +174,21 @@ namespace PedidoNet.Web.Services.Offline
             // Protección
             if (producto.ProductoId.HasValue)
             {
-                producto.SyncStatus = UI.Shared.Offline.SyncStatus.Synced;
+                producto.SyncStatus = SyncStatus.Synced;
 
                 await _store.UpsertAsync(producto, cancellationToken);
 
                 return;
             }
 
+            /*
+             * ClientId = LocalId.
+             *
+             * Si el POST llegó al servidor pero se perdió la
+             * respuesta, el reintento envía el mismo ClientId y
+             * la API devuelve el producto existente (índice único
+             * filtrado + consulta previa por ClientId).
+             */
             var request = new CrearProductoRequest
             {
                 ClientId = producto.LocalId,
@@ -188,19 +223,39 @@ namespace PedidoNet.Web.Services.Offline
             producto.TieneIVA = created.TieneIVA;
             producto.TieneISC = created.TieneISC;
 
-            producto.SyncStatus = UI.Shared.Offline.SyncStatus.Synced;
+            producto.SyncStatus = SyncStatus.Synced;
             producto.isDeleted = false;
             producto.LastModifiedUtc = DateTime.UtcNow;
 
             await _store.UpsertAsync(producto, cancellationToken);
         }
 
-        private async Task RegisterFailureAsync(ProductoSyncOperation operation, Exception ex, CancellationToken cancellationToken)
+        private async Task RegisterTransientFailureAsync(ProductoSyncOperation operation, Exception ex, CancellationToken cancellationToken)
         {
             operation.RetryCount++;
             operation.LastError = ex.Message;
 
             await _queue.UpdateAsync(operation, cancellationToken);
+        }
+
+        private async Task RegisterPermanentFailureAsync(ProductoSyncOperation operation, Exception ex, CancellationToken cancellationToken)
+        {
+            operation.RetryCount++;
+            operation.LastError = ex.Message;
+            operation.RequiresAttention = true;
+
+            await _queue.UpdateAsync(operation, cancellationToken);
+
+            var producto = await _store.GetByLocalIdAsync(operation.ProductoLocalId, cancellationToken);
+
+            if (producto is null)
+            {
+                return;
+            }
+
+            producto.SyncStatus = SyncStatus.Failed;
+
+            await _store.UpsertAsync(producto, cancellationToken);
         }
 
         private static bool IsTransient(HttpRequestException exception)
@@ -212,17 +267,11 @@ namespace PedidoNet.Web.Services.Offline
                 return true;
             }
 
-            return exception.StatusCode switch
-            {
-                HttpStatusCode.RequestTimeout => true,
-                HttpStatusCode.TooManyRequests => true,
-                HttpStatusCode.InternalServerError => true,
-                HttpStatusCode.BadGateway => true,
-                HttpStatusCode.ServiceUnavailable => true,
-                HttpStatusCode.GatewayTimeout => true,
+            var statusCode = (int)exception.StatusCode.Value;
 
-                _ => false
-            };
+            return exception.StatusCode == HttpStatusCode.RequestTimeout ||
+                   exception.StatusCode == HttpStatusCode.TooManyRequests ||
+                   statusCode >= 500;
         }
     }
 }

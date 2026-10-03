@@ -77,3 +77,183 @@ h1:focus {
         padding-left: env(safe-area-inset-left);
     }
 }
+
+/* =========================================================
+   PEDIDONET - estilos compartidos con la app Web
+   (layout, estado de conexión y banner offline)
+   ========================================================= */
+
+:root {
+    --pn-primary: #0b3b73;
+    --pn-primary-dark: #06284f;
+    --pn-accent: #0d6efd;
+    --pn-bg: #f4f7fb;
+    --pn-border: #e2e8f0;
+    --pn-text: #172033;
+    --pn-muted: #64748b;
+    --pn-radius: 14px;
+}
+
+body {
+    margin: 0;
+    background: var(--pn-bg);
+    color: var(--pn-text);
+}
+
+.app-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.app-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(255,255,255,0.96);
+    border-bottom: 1px solid var(--pn-border);
+    box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+}
+
+.app-header-inner {
+    min-height: 62px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-left: 1rem;
+    padding-right: 1rem;
+}
+
+.app-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    color: var(--pn-text);
+    text-decoration: none;
+}
+
+.app-brand-title {
+    font-weight: 800;
+    font-size: 1.1rem;
+    line-height: 1.1;
+}
+
+.app-brand-subtitle {
+    color: var(--pn-muted);
+    font-size: 0.72rem;
+}
+
+.app-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.connection-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.8rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+    .connection-status.online {
+        background: #e9f8ef;
+        color: #146c43;
+    }
+
+    .connection-status.offline {
+        background: #fff1f2;
+        color: #b42318;
+    }
+
+.connection-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.offline-banner {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    background: linear-gradient(90deg, #fff7ed, #fffbeb);
+    color: #854d0e;
+    border: 1px solid #fed7aa;
+    border-radius: 12px;
+}
+
+.app-main {
+    flex: 1;
+    width: 100%;
+}
+
+.card {
+    border-radius: var(--pn-radius);
+}
+
+.btn-primary {
+    background: var(--pn-primary);
+    border-color: var(--pn-primary);
+}
+
+    .btn-primary:hover {
+        background: var(--pn-primary-dark);
+        border-color: var(--pn-primary-dark);
+    }
+
+/* =========================================================
+   LOGIN
+   ========================================================= */
+
+.login-page {
+    min-height: calc(100vh - 62px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem 1rem;
+    background: radial-gradient( circle at top left, rgba(13, 110, 253, 0.12), transparent 35% ), radial-gradient( circle at bottom right, rgba(11, 59, 115, 0.10), transparent 35% ), var(--pn-bg);
+}
+
+.login-card {
+    width: 100%;
+    max-width: 420px;
+    background: white;
+    border: 1px solid var(--pn-border);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.10);
+}
+
+.login-brand {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.login-logo {
+    width: 66px;
+    height: 66px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    border-radius: 18px;
+    background: linear-gradient( 135deg, var(--pn-primary), var(--pn-accent) );
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 800;
+}
+
+.login-brand h1 {
+    margin-bottom: 0.3rem;
+    font-size: 1.6rem;
+    font-weight: 800;
+}
+
+.login-brand p {
+    color: var(--pn-muted);
+    font-size: 0.9rem;
+}

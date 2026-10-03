@@ -1,8 +1,13 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 using PedidoNet.Mobile.Configuration;
 using PedidoNet.Mobile.Service.Api;
 using PedidoNet.Mobile.Service.Auth;
+using PedidoNet.Mobile.Service.Network;
+using PedidoNet.Mobile.Service.Offline;
 using PedidoNet.UI.Shared.Auth;
+using PedidoNet.UI.Shared.Offline;
+using PedidoNet.UI.Shared.Offline.Productos;
 using PedidoNet.UI.Shared.Productos;
 
 namespace PedidoNet.Mobile
@@ -89,6 +94,21 @@ namespace PedidoNet.Mobile
                 AuthService>();
 
             // =========================================================
+            // ESTADO DE AUTENTICACIÓN / AUTORIZACIÓN
+            //
+            // Habilita [Authorize], AuthorizeRouteView y AuthorizeView.
+            // =========================================================
+
+            builder.Services.AddAuthorizationCore();
+            builder.Services.AddCascadingAuthenticationState();
+
+            builder.Services.AddScoped<
+                PedidoNetAuthenticationStateProvider>();
+
+            builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
+                sp.GetRequiredService<PedidoNetAuthenticationStateProvider>());
+
+            // =========================================================
             // PRODUCTOS API CLIENT
             //
             // Utiliza PedidoNetAuthenticatedApi.
@@ -112,6 +132,15 @@ namespace PedidoNet.Mobile
 
                 return new ProductosApiClient(httpClient);
             });
+
+            // =========================================================
+            // OFFLINE-FIRST DE PRODUCTOS (SQLite + MAUI Connectivity)
+            //
+            // RCL = qué hacer   (ProductoService, ProductoSyncService)
+            // Host = cómo hacerlo (SQLite, Connectivity)
+            // =========================================================
+
+            ConfigureOffline(builder.Services);
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
@@ -180,6 +209,36 @@ namespace PedidoNet.Mobile
             // =========================================================
 
             services.AddScoped<ApiClient>();
+        }
+
+        private static void ConfigureOffline(
+            IServiceCollection services)
+        {
+            // Conectividad nativa de MAUI detrás del contrato compartido.
+            services.AddSingleton<IConnectivity>(
+                Connectivity.Current);
+
+            services.AddSingleton<
+                IConnectivityService,
+                MauiConnectivityService>();
+
+            // Una única conexión SQLite para toda la app.
+            services.AddSingleton<PedidoNetDatabase>();
+
+            services.AddSingleton<
+                IProductoOfflineStore,
+                SqliteProductoStore>();
+
+            services.AddSingleton<
+                IProductoSyncQueue,
+                SqliteProductoSyncQueue>();
+
+            // Lógica compartida (RCL).
+            services.AddScoped<ProductoSyncService>();
+
+            services.AddScoped<
+                IProductoService,
+                ProductoService>();
         }
     }
 }

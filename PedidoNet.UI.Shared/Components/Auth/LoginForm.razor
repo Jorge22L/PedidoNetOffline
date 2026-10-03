@@ -1,33 +1,51 @@
 ﻿@using PedidoNet.UI.Shared.Auth
+@using PedidoNet.UI.Shared.Offline
 
 @inject IAuthService AuthService
+@inject IConnectivityService Connectivity
 
-<div>
-    <label>Usuario</label>
-    <input @bind="usuario" />
-</div>
+<EditForm Model="@model"
+          OnValidSubmit="LoginAsync">
 
-<div>
-    <label>Contraseña</label>
-    <input type="password" @bind="password" />
-</div>
+    <DataAnnotationsValidator />
 
-<button @onclick="LoginAsync" disabled="@procesando">
-    @(procesando ? "Autenticando..." : "Iniciar sesión")
-</button>
+    <FormField Label="Usuario">
+        <InputText class="form-control"
+                   autocomplete="username"
+                   @bind-Value="model.NombreUsuario" />
 
-@if (!string.IsNullOrWhiteSpace(mensaje))
-{
-    <p>@mensaje</p>
-}
+        <ValidationMessage For="@(() => model.NombreUsuario)" />
+    </FormField>
+
+    <FormField Label="Contraseña">
+        <InputText type="password"
+                   class="form-control"
+                   autocomplete="current-password"
+                   @bind-Value="model.Password" />
+
+        <ValidationMessage For="@(() => model.Password)" />
+    </FormField>
+
+    <AlertMessage Message="@mensaje"
+                  Variant="danger"
+                  Dismissible="false" />
+
+    <LoadingButton Type="submit"
+                   CssClass="w-100"
+                   isLoading="@procesando"
+                   LoadingText="Autenticando...">
+        Iniciar sesión
+    </LoadingButton>
+
+</EditForm>
 
 @code {
     [Parameter]
     public EventCallback<LoginResponse> OnLoginSuccess { get; set; }
 
-    private string usuario = string.Empty;
-    private string password = string.Empty;
-    private string mensaje = string.Empty;
+    private readonly LoginRequest model = new();
+
+    private string? mensaje;
     private bool procesando;
 
     private async Task LoginAsync()
@@ -38,14 +56,22 @@
         try
         {
             procesando = true;
-            mensaje = string.Empty;
+            mensaje = null;
+
+            if (!Connectivity.IsOnline)
+            {
+                mensaje = "Necesitas conexión a Internet para iniciar sesión.";
+                return;
+            }
 
             var request = new LoginRequest
             {
-                NombreUsuario = usuario,
-                Password = password
+                NombreUsuario = model.NombreUsuario.Trim(),
+                Password = model.Password
             };
 
+            // La API valida las credenciales; solo una respuesta
+            // exitosa guarda la sesión.
             var result = await AuthService.LoginAsync(request);
 
             if (!result.Success || result.Session is null)
@@ -55,7 +81,17 @@
                 return;
             }
 
+            model.Password = string.Empty;
+
             await OnLoginSuccess.InvokeAsync(result.Session);
+        }
+        catch (HttpRequestException)
+        {
+            mensaje = "No fue posible conectar con el servidor. Intenta nuevamente.";
+        }
+        catch (TaskCanceledException)
+        {
+            mensaje = "El servidor tardó demasiado en responder. Intenta nuevamente.";
         }
         catch (Exception ex)
         {

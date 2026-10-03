@@ -1,0 +1,45 @@
+﻿@using PedidoNet.UI.Shared.Auth
+
+@inject IAuthService AuthService
+@inject PedidoNetAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized>
+        <span class="small text-secondary d-none d-sm-inline">
+            @context.User.Identity?.Name
+        </span>
+
+        <button type="button"
+                class="btn btn-sm btn-outline-secondary"
+                disabled="@cerrandoSesion"
+                @onclick="CerrarSesionAsync">
+            Salir
+        </button>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private bool cerrandoSesion;
+
+    private async Task CerrarSesionAsync()
+    {
+        if (cerrandoSesion)
+            return;
+
+        try
+        {
+            cerrandoSesion = true;
+
+            await AuthService.LogoutAsync();
+        }
+        finally
+        {
+            cerrandoSesion = false;
+
+            await AuthStateProvider.NotifySessionChangedAsync();
+
+            Navigation.NavigateTo("/login", replace: true);
+        }
+    }
+}

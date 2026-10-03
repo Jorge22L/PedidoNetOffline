@@ -42,6 +42,8 @@ public sealed class AuthenticatedHttpHandler : DelegatingHandler
         if (response.StatusCode !=
             HttpStatusCode.Unauthorized)
         {
+            retryRequest.Dispose();
+
             return response;
         }
 
@@ -57,8 +59,11 @@ public sealed class AuthenticatedHttpHandler : DelegatingHandler
 
         response.Dispose();
 
+        // Se indica qué token falló para forzar el refresh
+        // aunque su fecha de expiración local siga vigente.
         var refreshResult =
-            await _authService.RefreshSessionAsync();
+            await _authService.RefreshSessionAsync(
+                session.AccessToken);
 
         if (!refreshResult.Success ||
             refreshResult.Session is null)

@@ -1,6 +1,27 @@
-﻿<Router AppAssembly="typeof(MauiProgram).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+﻿<Router AppAssembly="typeof(MauiProgram).Assembly"
+        AdditionalAssemblies="AdditionalAssemblies"
+        NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
-        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        @*
+            Las páginas marcadas con [Authorize] (Productos) solo se
+            muestran con una sesión válida; si no, se redirige a login.
+        *@
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                <RedirectToLogin />
+            </NotAuthorized>
+            <Authorizing>
+                <LoadingIndicator Message="Validando sesión..." />
+            </Authorizing>
+        </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    // Páginas compartidas (Login, Productos) que viven en PedidoNet.UI.Shared.
+    private static readonly System.Reflection.Assembly[] AdditionalAssemblies =
+    [
+        typeof(PedidoNet.UI.Shared.Productos.IProductoService).Assembly
+    ];
+}

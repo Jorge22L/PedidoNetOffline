@@ -1,10 +1,13 @@
 ﻿@page "/productos/editar/{LocalId:guid}"
+@attribute [Authorize]
 
 @using PedidoNet.UI.Shared.Components.Productos
 @using PedidoNet.UI.Shared.Models.Productos
-@using PedidoNet.Web.Services.Productos
+@using PedidoNet.UI.Shared.Offline
+@using PedidoNet.UI.Shared.Productos
 
 @inject IProductoService ProductoService
+@inject IConnectivityService Connectivity
 @inject NavigationManager Navigation
 
 <PageTitle>Editar producto</PageTitle>
@@ -43,7 +46,22 @@
                     OnValidSubmit="GuardarAsync"
                     Cancel="Cancelar" />
 
-                <ProductoImageManager OnUpload="SubirImagenAsync" />
+                @*
+                    Imágenes offline: fase posterior.
+                    Solo se gestionan con conexión y cuando el producto
+                    ya existe en el servidor (tiene ProductoId).
+                *@
+                @if (productoId.HasValue && Connectivity.IsOnline)
+                {
+                    <ProductoImageManager OnUpload="SubirImagenAsync" />
+                }
+                else
+                {
+                    <AlertMessage
+                        Variant="info"
+                        Message="Las imágenes solo pueden gestionarse con conexión y cuando el producto ya fue sincronizado."
+                        Dismissible="false" />
+                }
 
             </div>
         </div>
@@ -54,7 +72,8 @@
 @code {
     [Parameter]
     public Guid LocalId { get; set; }
-    public int Id { get; set; }
+
+    private int? productoId;
 
     private ProductoFormModel model = new();
 
@@ -76,6 +95,8 @@
                 return;
             }
 
+            productoId = producto.ProductoId;
+
             model = new ProductoFormModel
             {
                 Codigo = producto.Codigo,
@@ -89,6 +110,10 @@
         catch (HttpRequestException ex)
         {
             errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"No fue posible cargar el producto. {ex.Message}";
         }
         finally
         {
@@ -123,6 +148,10 @@
         {
             errorMessage = ex.Message;
         }
+        catch (Exception ex)
+        {
+            errorMessage = $"No fue posible guardar el producto. {ex.Message}";
+        }
         finally
         {
             isSaving = false;
@@ -136,11 +165,16 @@
 
     private async Task SubirImagenAsync(ProductoImageUpload image)
     {
+        if (!productoId.HasValue)
+        {
+            return;
+        }
+
         try
         {
             errorMessage = null;
 
-            await ProductoService.SubirImagenAsync(Id, image );
+            await ProductoService.SubirImagenAsync(productoId.Value, image);
         }
         catch(UnauthorizedAccessException)
         {

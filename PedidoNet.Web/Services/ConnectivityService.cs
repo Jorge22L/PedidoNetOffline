@@ -1,8 +1,9 @@
 ﻿using Microsoft.JSInterop;
+using PedidoNet.UI.Shared.Offline;
 
 namespace PedidoNet.Web.Services
 {
-    public class ConnectivityService : IAsyncDisposable
+    public class ConnectivityService : IConnectivityService, IAsyncDisposable
     {
         private readonly IJSRuntime _jsRuntime;
         private DotNetObjectReference<ConnectivityService>? _dotNetRef;

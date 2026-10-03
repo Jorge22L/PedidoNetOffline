@@ -1,0 +1,45 @@
+﻿@page "/login"
+
+@using PedidoNet.UI.Shared.Auth
+@using PedidoNet.UI.Shared.Components.Auth
+
+@inject PedidoNetAuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Iniciar sesión</PageTitle>
+
+<div class="login-page">
+    <div class="login-card">
+
+        <div class="login-brand">
+            <div class="login-logo">PN</div>
+
+            <h1>PedidoNet</h1>
+
+            <p>Inicia sesión para continuar.</p>
+        </div>
+
+        <LoginForm OnLoginSuccess="LoginExitoso" />
+
+    </div>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        /*
+         * Si la API invalidó la sesión (se borró del storage) el estado
+         * en memoria puede seguir "autenticado". Solo se notifica cuando
+         * realmente cambió; notificar siempre aquí provocaba un bucle:
+         * notificar -> AuthorizeRouteView recrea Login -> notificar...
+         */
+        await AuthStateProvider.SyncSessionStateAsync();
+    }
+
+    private async Task LoginExitoso(LoginResponse session)
+    {
+        await AuthStateProvider.NotifySessionChangedAsync();
+
+        Navigation.NavigateTo("/productos", replace: true);
+    }
+}

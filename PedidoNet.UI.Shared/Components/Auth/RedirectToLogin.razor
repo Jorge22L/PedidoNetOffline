@@ -1,11 +1,8 @@
-﻿@page "/"
-
-@inject NavigationManager Navigation
+﻿@inject NavigationManager Navigation
 
 @code {
     protected override void OnInitialized()
     {
-        // Flujo de la app: primero login, después Productos.
         Navigation.NavigateTo("/login", replace: true);
     }
 }

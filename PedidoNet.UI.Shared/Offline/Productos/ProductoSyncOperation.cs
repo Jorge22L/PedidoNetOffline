@@ -12,5 +12,11 @@ namespace PedidoNet.UI.Shared.Offline.Productos
         public DateTime CreatedUtc { get; set; }
         public int RetryCount { get; set; }
         public string? LastError { get; set; }
+
+        /// <summary>
+        /// La operación falló con un error permanente (400, 403, 409, validación...).
+        /// No se reintenta automáticamente hasta que el usuario edite o elimine el producto.
+        /// </summary>
+        public bool RequiresAttention { get; set; }
     }
 }

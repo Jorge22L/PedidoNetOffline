@@ -1,6 +1,23 @@
-﻿<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+﻿<Router AppAssembly="@typeof(App).Assembly"
+        AdditionalAssemblies="@AdditionalAssemblies"
+        NotFoundPage="typeof(Pages.NotFound)">
     <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <NotAuthorized>
+                <RedirectToLogin />
+            </NotAuthorized>
+            <Authorizing>
+                <LoadingIndicator Message="Validando sesión..." />
+            </Authorizing>
+        </AuthorizeRouteView>
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
 </Router>
+
+@code {
+    // Páginas compartidas (Login, Productos) que viven en PedidoNet.UI.Shared.
+    private static readonly System.Reflection.Assembly[] AdditionalAssemblies =
+    [
+        typeof(PedidoNet.UI.Shared.Productos.IProductoService).Assembly
+    ];
+}

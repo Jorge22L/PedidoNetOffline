@@ -2,9 +2,21 @@
 
 public sealed class AuthService : IAuthService
 {
+    private static readonly TimeSpan RefreshMargin =
+        TimeSpan.FromMinutes(1);
+
+    /*
+     * El lock es estático porque IHttpClientFactory resuelve
+     * AuthenticatedHttpHandler en su propio scope, por lo que
+     * pueden existir varias instancias de AuthService al mismo
+     * tiempo. Si cada una tuviera su propio lock, dos refresh
+     * simultáneos usarían el mismo refresh token y el segundo
+     * fallaría porque la API lo rota (lo revoca) en el primero.
+     */
+    private static readonly SemaphoreSlim _refreshLock = new(1, 1);
+
     private readonly AuthApiClient _apiClient;
     private readonly ITokenStorage _tokenStorage;
-    private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
     public AuthService(
         AuthApiClient apiClient,
@@ -40,12 +52,40 @@ public sealed class AuthService : IAuthService
         return LoginResult.Ok(response.Data);
     }
 
-    public Task LogoutAsync()
+    public async Task LogoutAsync()
     {
-        return _tokenStorage.ClearAsync();
+        var session = await _tokenStorage.GetAsync();
+
+        await _tokenStorage.ClearAsync();
+
+        if (session is null ||
+            string.IsNullOrWhiteSpace(session.RefreshToken))
+        {
+            return;
+        }
+
+        try
+        {
+            /*
+             * Revocar en el servidor es "best effort":
+             * si no hay conexión la sesión local ya fue eliminada
+             * y el refresh token expirará por sí solo.
+             */
+            using var timeout = new CancellationTokenSource(
+                TimeSpan.FromSeconds(5));
+
+            await _apiClient.RevokeAsync(new RefreshTokenRequest
+            {
+                RefreshToken = session.RefreshToken
+            }, timeout.Token);
+        }
+        catch (Exception)
+        {
+        }
     }
 
-    public async Task<LoginResult> RefreshSessionAsync()
+    public async Task<LoginResult> RefreshSessionAsync(
+        string? failedAccessToken = null)
     {
         await _refreshLock.WaitAsync();
 
@@ -77,11 +117,19 @@ public sealed class AuthService : IAuthService
              * Otra petición pudo haber renovado la sesión
              * mientras esperábamos el lock.
              *
-             * Si el access token vuelve a ser válido,
-             * no necesitamos hacer otro refresh.
+             * - Refresh preventivo: si el access token vuelve a
+             *   ser válido no necesitamos otro refresh.
+             * - Refresh por 401: si el token almacenado ya no es
+             *   el que la API rechazó, alguien más lo renovó.
              */
-            if (session.ExpiraEn >
-                DateTime.UtcNow.AddMinutes(1))
+            var alreadyRefreshed = failedAccessToken is null
+                ? session.ExpiraEn > DateTime.UtcNow.Add(RefreshMargin)
+                : !string.Equals(
+                    session.AccessToken,
+                    failedAccessToken,
+                    StringComparison.Ordinal);
+
+            if (alreadyRefreshed)
             {
                 return LoginResult.Ok(session);
             }
@@ -91,6 +139,12 @@ public sealed class AuthService : IAuthService
                 RefreshToken = session.RefreshToken
             };
 
+            /*
+             * Errores de red, 429 o 5xx lanzan HttpRequestException
+             * desde AuthApiClient. NO se borra la sesión en esos
+             * casos: el refresh token sigue siendo válido y se
+             * reintentará cuando la API vuelva a estar disponible.
+             */
             var response =
                 await _apiClient.RefreshAsync(request);
 
@@ -110,6 +164,7 @@ public sealed class AuthService : IAuthService
                     "No fue posible renovar la sesión.");
             }
 
+            // La API rota el refresh token: se guarda la nueva sesión completa.
             await _tokenStorage.SaveAsync(response.Data);
 
             return LoginResult.Ok(response.Data);
