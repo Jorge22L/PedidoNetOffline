@@ -3,6 +3,7 @@ using PedidoNet.Mobile.Configuration;
 using PedidoNet.Mobile.Service.Api;
 using PedidoNet.Mobile.Service.Auth;
 using PedidoNet.UI.Shared.Auth;
+using PedidoNet.UI.Shared.Productos;
 
 namespace PedidoNet.Mobile
 {
@@ -23,25 +24,9 @@ namespace PedidoNet.Mobile
 
             builder.Services.AddMauiBlazorWebView();
 
-            builder.Services.AddSingleton<UI.Shared.Auth.ITokenStorage, MauiTokenStorage>();
-
-            builder.Services.AddTransient<AuthenticatedHttpHandler>();
-
-            ConfigureApi(builder.Services);
-
-            builder.Services.AddScoped<PedidoNet.UI.Shared.Auth.AuthApiClient>(sp =>
-            {
-                var httpClientFactory =
-                    sp.GetRequiredService<IHttpClientFactory>();
-
-                var httpClient =
-                    httpClientFactory.CreateClient("PedidoNetApi");
-
-                return new PedidoNet.UI.Shared.Auth.AuthApiClient(httpClient);
-            });
-
-            builder.Services.AddScoped<IAuthService, AuthService>();
-
+            // =========================================================
+            // CONFIGURACIÓN DE API
+            // =========================================================
 
             string baseUrl = ApiConfiguration.GetBaseUrl();
 
@@ -52,7 +37,81 @@ namespace PedidoNet.Mobile
 
             builder.Services.AddSingleton(apiOptions);
 
+            // =========================================================
+            // STORAGE DE AUTENTICACIÓN
+            // =========================================================
+
+            builder.Services.AddSingleton<
+                ITokenStorage,
+                MauiTokenStorage>();
+
+            // =========================================================
+            // HANDLER PARA REQUESTS AUTENTICADOS
+            // =========================================================
+
+            builder.Services.AddTransient<
+                AuthenticatedHttpHandler>();
+
+            // =========================================================
+            // HTTP CLIENTS
+            // =========================================================
+
             ConfigureApi(builder.Services);
+
+            // =========================================================
+            // AUTH API CLIENT
+            //
+            // Utiliza PedidoNetApi:
+            // - login
+            // - refresh
+            //
+            // NO utiliza AuthenticatedHttpHandler
+            // =========================================================
+
+            builder.Services.AddScoped<UI.Shared.Auth.AuthApiClient>(sp =>
+            {
+                var httpClientFactory =
+                    sp.GetRequiredService<IHttpClientFactory>();
+
+                var httpClient =
+                    httpClientFactory.CreateClient(
+                        "PedidoNetApi");
+
+                return new UI.Shared.Auth.AuthApiClient(httpClient);
+            });
+
+            // =========================================================
+            // AUTH SERVICE
+            // =========================================================
+
+            builder.Services.AddScoped<
+                IAuthService,
+                AuthService>();
+
+            // =========================================================
+            // PRODUCTOS API CLIENT
+            //
+            // Utiliza PedidoNetAuthenticatedApi.
+            // Este cliente pasa automáticamente por:
+            //
+            // AuthenticatedHttpHandler
+            //      ↓
+            // Bearer token
+            //      ↓
+            // refresh automático
+            // =========================================================
+
+            builder.Services.AddScoped<ProductosApiClient>(sp =>
+            {
+                var httpClientFactory =
+                    sp.GetRequiredService<IHttpClientFactory>();
+
+                var httpClient =
+                    httpClientFactory.CreateClient(
+                        "PedidoNetAuthenticatedApi");
+
+                return new ProductosApiClient(httpClient);
+            });
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
@@ -62,10 +121,20 @@ namespace PedidoNet.Mobile
             return builder.Build();
         }
 
-        private static void ConfigureApi(IServiceCollection services)
+        private static void ConfigureApi(
+            IServiceCollection services)
         {
-            // Cliente SIN autenticación.
-            // Se utiliza para login y refresh.
+            // =========================================================
+            // CLIENTE SIN AUTENTICACIÓN
+            //
+            // Se usa exclusivamente para:
+            // - login
+            // - refresh token
+            //
+            // IMPORTANTE:
+            // No agregar AuthenticatedHttpHandler aquí.
+            // =========================================================
+
             services.AddHttpClient(
                 "PedidoNetApi",
                 (sp, client) =>
@@ -80,8 +149,16 @@ namespace PedidoNet.Mobile
                         TimeSpan.FromSeconds(30);
                 });
 
-            // Cliente CON autenticación.
-            // Se utilizará para Producto, Pedido, Cliente, etc.
+            // =========================================================
+            // CLIENTE AUTENTICADO
+            //
+            // Se utilizará para:
+            // - Productos
+            // - Clientes
+            // - Pedidos
+            // - otros endpoints protegidos
+            // =========================================================
+
             services.AddHttpClient(
                 "PedidoNetAuthenticatedApi",
                 (sp, client) =>
@@ -97,6 +174,10 @@ namespace PedidoNet.Mobile
                 })
                 .AddHttpMessageHandler<
                     AuthenticatedHttpHandler>();
+
+            // =========================================================
+            // CLIENTE GENÉRICO EXISTENTE DE MOBILE
+            // =========================================================
 
             services.AddScoped<ApiClient>();
         }

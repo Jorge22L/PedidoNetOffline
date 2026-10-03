@@ -1,6 +1,9 @@
 ﻿@page "/"
 @using PedidoNet.UI.Shared.Auth
 @using PedidoNet.UI.Shared.Components.Auth
+@using PedidoNet.UI.Shared.Productos
+
+@inject ProductosApiClient ProductosApiClient
 @inject IAuthService AuthService
 @inject PedidoNet.Mobile.Service.Api.ApiClient ApiClient
 
@@ -10,6 +13,12 @@
     Probar API protegida
 </button>
 <p>@mensajeApi</p>
+
+<button @onclick="ProbarProductos">
+    Probar productos
+</button>
+
+<p>@mensajeProductos</p>
 
 @code {
     private string mensajeApi = string.Empty;
@@ -32,4 +41,23 @@
                 $"Error API: {ex.Message}";
         }
     }
+
+    private string mensajeProductos = string.Empty;
+
+private async Task ProbarProductos()
+{
+    try
+    {
+        var productos =
+            await ProductosApiClient.GetAllAsync();
+
+        mensajeProductos =
+            $"Productos encontrados: {productos.Count}";
+    }
+    catch (Exception ex)
+    {
+        mensajeProductos =
+            $"Error productos: {ex.Message}";
+    }
+}
 }

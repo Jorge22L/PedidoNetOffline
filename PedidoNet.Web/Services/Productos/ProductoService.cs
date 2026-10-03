@@ -1,7 +1,6 @@
 ﻿using PedidoNet.UI.Shared.Models.Productos;
 using PedidoNet.UI.Shared.Offline.Productos;
-using PedidoNet.Web.Models.Productos;
-using PedidoNet.Web.Services.Api;
+using PedidoNet.UI.Shared.Productos;
 using PedidoNet.Web.Services.Offline;
 
 namespace PedidoNet.Web.Services.Productos

@@ -1,5 +1,4 @@
-﻿using PedidoNet.Web.Models.Productos;
-using PedidoNet.UI.Shared.Models.Productos;
+﻿using PedidoNet.UI.Shared.Models.Productos;
 
 namespace PedidoNet.Web.Services.Productos
 {
