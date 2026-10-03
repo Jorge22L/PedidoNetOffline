@@ -10,7 +10,7 @@ namespace PedidoNet.Mobile.Service.Api
 
         public ApiClient(IHttpClientFactory httpClientFactory)
         {
-            _httpClient = httpClientFactory.CreateClient("PedidoNetApi");
+            _httpClient = httpClientFactory.CreateClient("PedidoNetAuthenticatedApi");
         }
 
         public async Task<HttpResponseMessage> GetAsync(string endpoint, CancellationToken cancellationToken = default)

@@ -1,6 +1,10 @@
 ﻿@page "/"
-@using PedidoNet.Web.Pages.Auth
 
-@* <PageTitle>Home</PageTitle> *@
+@inject NavigationManager Navigation
 
-<Login />
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo("/login");
+    }
+}

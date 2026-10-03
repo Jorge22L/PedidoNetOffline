@@ -25,6 +25,8 @@ namespace PedidoNet.Mobile
 
             builder.Services.AddSingleton<UI.Shared.Auth.ITokenStorage, MauiTokenStorage>();
 
+            builder.Services.AddTransient<AuthenticatedHttpHandler>();
+
             ConfigureApi(builder.Services);
 
             builder.Services.AddScoped<PedidoNet.UI.Shared.Auth.AuthApiClient>(sp =>
@@ -39,6 +41,7 @@ namespace PedidoNet.Mobile
             });
 
             builder.Services.AddScoped<IAuthService, AuthService>();
+
 
             string baseUrl = ApiConfiguration.GetBaseUrl();
 
@@ -61,13 +64,39 @@ namespace PedidoNet.Mobile
 
         private static void ConfigureApi(IServiceCollection services)
         {
-            services.AddHttpClient("PedidoNetApi", (sp, client) =>
-            {
-                var options = sp.GetRequiredService<ApiOptions>();
+            // Cliente SIN autenticación.
+            // Se utiliza para login y refresh.
+            services.AddHttpClient(
+                "PedidoNetApi",
+                (sp, client) =>
+                {
+                    var options =
+                        sp.GetRequiredService<ApiOptions>();
 
-                client.BaseAddress = new Uri(options.BaseUrl);
-                client.Timeout = TimeSpan.FromSeconds(30);
-            });
+                    client.BaseAddress =
+                        new Uri(options.BaseUrl);
+
+                    client.Timeout =
+                        TimeSpan.FromSeconds(30);
+                });
+
+            // Cliente CON autenticación.
+            // Se utilizará para Producto, Pedido, Cliente, etc.
+            services.AddHttpClient(
+                "PedidoNetAuthenticatedApi",
+                (sp, client) =>
+                {
+                    var options =
+                        sp.GetRequiredService<ApiOptions>();
+
+                    client.BaseAddress =
+                        new Uri(options.BaseUrl);
+
+                    client.Timeout =
+                        TimeSpan.FromSeconds(30);
+                })
+                .AddHttpMessageHandler<
+                    AuthenticatedHttpHandler>();
 
             services.AddScoped<ApiClient>();
         }

@@ -1,65 +1,35 @@
 ﻿@page "/"
 @using PedidoNet.UI.Shared.Auth
-
+@using PedidoNet.UI.Shared.Components.Auth
 @inject IAuthService AuthService
+@inject PedidoNet.Mobile.Service.Api.ApiClient ApiClient
 
-<div>
-    <label>Usuario</label>
-    <input @bind="usuario" />
-</div>
+<LoginForm />
 
-<div>
-    <label>Contraseña</label>
-    <input type="password" @bind="password" />
-</div>
-
-<button @onclick="ProbarLogin">
-    Probar Login
+<button @onclick="ProbarApiProtegida">
+    Probar API protegida
 </button>
-
-<p>@mensaje</p>
+<p>@mensajeApi</p>
 
 @code {
-    private string usuario = string.Empty;
-    private string password = string.Empty;
-    private string mensaje = "Sin probar";
+    private string mensajeApi = string.Empty;
 
-    private async Task ProbarLogin()
+    private async Task ProbarApiProtegida()
     {
         try
         {
-            mensaje = "Autenticando...";
+            using var response =
+                await ApiClient.GetAsync(
+                    "api/v1/Producto");
 
-            var request = new LoginRequest
-            {
-                NombreUsuario = usuario,
-                Password = password
-            };
-
-            var loginCorrecto =
-                await AuthService.LoginAsync(request);
-
-            if (!loginCorrecto)
-            {
-                mensaje = "Usuario o contraseña incorrectos.";
-                return;
-            }
-
-            var session =
-                await AuthService.GetSessionAsync();
-
-            if (session is null)
-            {
-                mensaje = "No fue posible recuperar la sesión.";
-                return;
-            }
-
-            mensaje =
-                $"Bienvenido {session.NombreUsuario}. Rol: {session.Rol}";
+            mensajeApi =
+                $"Status API: {(int)response.StatusCode} " +
+                $"{response.StatusCode}";
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
-            mensaje = $"Error: {e.Message}";
+            mensajeApi =
+                $"Error API: {ex.Message}";
         }
     }
 }

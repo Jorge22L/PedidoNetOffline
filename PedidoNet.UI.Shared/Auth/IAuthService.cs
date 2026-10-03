@@ -6,10 +6,11 @@ namespace PedidoNet.UI.Shared.Auth
 {
     public interface IAuthService
     {
-        Task<bool> LoginAsync(LoginRequest request);
+        Task<LoginResult> LoginAsync(LoginRequest request);
 
         Task LogoutAsync();
 
         Task<LoginResponse?> GetSessionAsync();
+        Task<LoginResult> RefreshSessionAsync();
     }
 }

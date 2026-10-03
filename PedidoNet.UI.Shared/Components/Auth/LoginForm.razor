@@ -1,0 +1,69 @@
+﻿@using PedidoNet.UI.Shared.Auth
+
+@inject IAuthService AuthService
+
+<div>
+    <label>Usuario</label>
+    <input @bind="usuario" />
+</div>
+
+<div>
+    <label>Contraseña</label>
+    <input type="password" @bind="password" />
+</div>
+
+<button @onclick="LoginAsync" disabled="@procesando">
+    @(procesando ? "Autenticando..." : "Iniciar sesión")
+</button>
+
+@if (!string.IsNullOrWhiteSpace(mensaje))
+{
+    <p>@mensaje</p>
+}
+
+@code {
+    [Parameter]
+    public EventCallback<LoginResponse> OnLoginSuccess { get; set; }
+
+    private string usuario = string.Empty;
+    private string password = string.Empty;
+    private string mensaje = string.Empty;
+    private bool procesando;
+
+    private async Task LoginAsync()
+    {
+        if (procesando)
+            return;
+
+        try
+        {
+            procesando = true;
+            mensaje = string.Empty;
+
+            var request = new LoginRequest
+            {
+                NombreUsuario = usuario,
+                Password = password
+            };
+
+            var result = await AuthService.LoginAsync(request);
+
+            if (!result.Success || result.Session is null)
+            {
+                mensaje = result.Message ?? "No fue posible iniciar sesión.";
+
+                return;
+            }
+
+            await OnLoginSuccess.InvokeAsync(result.Session);
+        }
+        catch (Exception ex)
+        {
+            mensaje = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+}

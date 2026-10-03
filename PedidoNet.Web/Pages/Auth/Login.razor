@@ -1,88 +1,15 @@
 ﻿@page "/login"
 
 @using PedidoNet.UI.Shared.Auth
+@using PedidoNet.UI.Shared.Components.Auth
 
-@inject IAuthService AuthService
 @inject NavigationManager Navigation
 
-<PageTitle>Iniciar Sesión</PageTitle>
-<div class="login-page">
-    <div class="login-card">
-        <div class="login-brand">
-            <div class="login-logo">
-                <img src="pedidoNet-192.png" />
-            </div>
-
-            <h1>PedidoNet</h1>
-            <AlertMessage Message="@errorMessage" Variant="danger" OnClose="ClearError" />
-
-            <EditForm Model="@model" OnValidSubmit="LoginAsync">
-                <DataAnnotationsValidator />
-                <div class="mb-3">
-                    <label class="form-label">Usuario</label>
-                    <InputText @bind-Value="model.NombreUsuario" class="form-control"
-                               placeholder="Nombre de usuario" />
-
-                    <ValidationMessage For="@(() => model.NombreUsuario)" />
-                </div>
-
-                <div class="mb-4">
-                    <label class="form-label">Contraseña</label>
-                    <InputText @bind-Value="model.Password" class="form-control"
-                               placeholder="Tu contraseña" type="password" />
-
-                    <ValidationMessage For="@(() => model.Password)" />
-                </div>
-
-                <LoadingButton Type="submit" isLoading="@isLoading"
-                               LoadingText="Ingresando..." CssClass="w-100">Iniciar Sesión</LoadingButton>
-            </EditForm>
-
-            <div class="login-footer">
-                PedidoNet . PWA
-            </div>
-            
-        </div>
-    </div>
-</div>
+<LoginForm OnLoginSuccess="LoginExitoso" />
 
 @code {
-    private readonly LoginRequest model = new();
-    private bool isLoading;
-    private string? errorMessage;
-
-    private async Task LoginAsync()
+    private void LoginExitoso(LoginResponse session)
     {
-        try
-        {
-            isLoading = true;
-            errorMessage = null;
-
-            var success = await AuthService.LoginAsync(model);
-            if (!success)
-            {
-                errorMessage = "Usuario o contraseña incorrectos.";
-                return;
-            }
-
-            Navigation.NavigateTo("/productos");
-        }
-        catch (HttpRequestException)
-        {
-            errorMessage = "No fue posible comunicarse con la API";
-        }
-        catch
-        {
-            errorMessage = "Ocurrió un error inesperado";
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    private void ClearError()
-    {
-        errorMessage = null;
+        Navigation.NavigateTo("/productos");
     }
 }
