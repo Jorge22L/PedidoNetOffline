@@ -1,5 +1,5 @@
 ﻿@page "/productos/crear"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Administrador")]
 
 @using PedidoNet.UI.Shared.Components.Productos
 @using PedidoNet.UI.Shared.Models.Productos

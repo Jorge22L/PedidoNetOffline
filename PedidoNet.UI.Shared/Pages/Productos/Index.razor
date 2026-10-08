@@ -18,11 +18,13 @@
                 Description="Administra los productos disponibles.">
 
         <Actions>
-            <button type="button"
-                    class="btn btn-primary px-3"
-                    @onclick="NuevoProducto">
-                Nuevo producto
-            </button>
+            <AuthorizeView Roles="Administrador">
+                <button type="button"
+                        class="btn btn-primary px-3"
+                        @onclick="NuevoProducto">
+                    Nuevo producto
+                </button>
+            </AuthorizeView>
         </Actions>
 
     </PageHeader>

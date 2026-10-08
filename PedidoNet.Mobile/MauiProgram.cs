@@ -1,11 +1,13 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using PedidoNet.Mobile.Configuration;
+using PedidoNet.Mobile.Device;
 using PedidoNet.Mobile.Service.Api;
 using PedidoNet.Mobile.Service.Auth;
 using PedidoNet.Mobile.Service.Network;
 using PedidoNet.Mobile.Service.Offline;
 using PedidoNet.UI.Shared.Auth;
+using PedidoNet.UI.Shared.Device;
 using PedidoNet.UI.Shared.Offline;
 using PedidoNet.UI.Shared.Offline.Productos;
 using PedidoNet.UI.Shared.Productos;
@@ -141,6 +143,7 @@ namespace PedidoNet.Mobile
             // =========================================================
 
             ConfigureOffline(builder.Services);
+            ConfigureDevice(builder.Services);
 
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
@@ -239,6 +242,12 @@ namespace PedidoNet.Mobile
             services.AddScoped<
                 IProductoService,
                 ProductoService>();
+        }
+
+        public static void ConfigureDevice(IServiceCollection services)
+        {
+            services.AddSingleton<IDevicePermissionService, MauiDevicePermissionService>();
+            services.AddSingleton<ICameraService, MauiCameraService>();
         }
     }
 }

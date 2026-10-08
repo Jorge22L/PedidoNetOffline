@@ -2,9 +2,13 @@
 
 @using PedidoNet.UI.Shared.Auth
 @using PedidoNet.UI.Shared.Components.Auth
+@using PedidoNet.UI.Shared.Offline
 
 @inject PedidoNetAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
+@inject IExternalLoginProvider ExternalLogin
+@inject IAuthService AuthService
+@inject IConnectivityService Connectivity
 
 <PageTitle>Iniciar sesión</PageTitle>
 
@@ -20,11 +24,29 @@
         </div>
 
         <LoginForm OnLoginSuccess="LoginExitoso" />
+        @if (ExternalLogin.IsSupported)
+        {
+            <div class="text-center text-secondary small my-3">o</div>
+
+            <button type="button"
+                    class="btn btn-outline-dark w-100"
+                    disabled="@procesandoSso"
+                    @onclick="EntrarConMicrosoftAsync">
+                @(procesandoSso ? "Conectando con Microsoft..." : "Iniciar sesión con Microsoft")
+            </button>
+
+            <AlertMessage Message="@errorSso" Dismissible="false" />
+        }
 
     </div>
 </div>
 
 @code {
+    private bool procesandoSso;
+    private string? errorSso;
+
+    
+
     protected override async Task OnInitializedAsync()
     {
         /*
@@ -35,6 +57,53 @@
          */
         await AuthStateProvider.SyncSessionStateAsync();
     }
+    private async Task EntrarConMicrosoftAsync()
+    {
+        if (procesandoSso)
+            return;
+
+        try
+        {
+            procesandoSso = true;
+            errorSso = null;
+
+            if (!Connectivity.IsOnline)
+            {
+                errorSso = "Necesitas conexión a Internet para iniciar sesión con Microsoft.";
+                return;
+            }
+
+            // 1. Login con Microsoft (popup en Web, navegador del sistema en Mobile)
+            var entraToken = await ExternalLogin.AcquireTokenAsync();
+
+            if (entraToken is null)
+                return; // el usuario cerró el popup
+
+            // 2. Intercambio por la sesión propia de PedidoNet
+            var result = await AuthService.LoginExternoAsync(entraToken);
+
+            if (!result.Success || result.Session is null)
+            {
+                errorSso = result.Message ?? "No fue posible iniciar sesión con Microsoft.";
+                await ExternalLogin.SignOutAsync(); // permite elegir otra cuenta
+                return;
+            }
+
+            await LoginExitoso(result.Session);
+        }
+        catch (HttpRequestException)
+        {
+            errorSso = "No fue posible conectar con el servidor. Intenta nuevamente.";
+        }
+        catch (Exception ex)
+        {
+            errorSso = $"Error al iniciar sesión con Microsoft: {ex.Message}";
+        }
+        finally
+        {
+            procesandoSso = false;
+        }
+    }
 
     private async Task LoginExitoso(LoginResponse session)
     {
@@ -42,4 +111,6 @@
 
         Navigation.NavigateTo("/productos", replace: true);
     }
+
+    
 }

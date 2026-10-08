@@ -2,13 +2,16 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using PedidoNet.UI.Shared.Auth;
+using PedidoNet.UI.Shared.Device;
 using PedidoNet.UI.Shared.Offline;
 using PedidoNet.UI.Shared.Offline.Productos;
 using PedidoNet.UI.Shared.Productos;
 using PedidoNet.Web;
 using PedidoNet.Web.Models.Auth;
 using PedidoNet.Web.Services;
+using PedidoNet.Web.Services.Auth;
 using PedidoNet.Web.Services.Offline;
+using static PedidoNet.Web.Services.Auth.MsalJsExternalLoginProvider;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -16,6 +19,28 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
     ?? throw new InvalidOperationException("ApiBaseUrl no está configurado");
+
+var entraTenantId = builder.Configuration["EntraId:TenantId"];
+var entraClientId = builder.Configuration["EntraId:ClientId"];
+var entraApiScope = builder.Configuration["EntraId:ApiScope"];
+
+if (!string.IsNullOrWhiteSpace(entraTenantId) &&
+    !string.IsNullOrWhiteSpace(entraClientId) &&
+    !string.IsNullOrWhiteSpace(entraApiScope))
+{
+    builder.Services.AddSingleton(new EntraWebOptions
+    {
+        TenantId = entraTenantId,
+        ClientId = entraClientId,
+        ApiScope = entraApiScope
+    });
+
+    builder.Services.AddScoped<IExternalLoginProvider, MsalJsExternalLoginProvider>();
+}
+else
+{
+    builder.Services.AddScoped<IExternalLoginProvider, UnsupportedExternalLoginProvider>();
+}
 
 // =========================================================
 // HTTP CLIENTS
@@ -77,6 +102,8 @@ builder.Services.AddScoped<IProductoOfflineStore, IndexedDbProductoStore>();
 builder.Services.AddScoped<IProductoSyncQueue, IndexedDbProductoSyncQueue>();
 builder.Services.AddScoped<ProductoSyncService>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
+builder.Services.AddSingleton<IDevicePermissionService, UnsupportedDevicePermissionService>();
+builder.Services.AddSingleton<ICameraService, UnsupportedCameraService>();
 
 
 await builder.Build().RunAsync();

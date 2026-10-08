@@ -52,6 +52,28 @@ public sealed class AuthService : IAuthService
         return LoginResult.Ok(response.Data);
     }
 
+    public async Task<LoginResult> LoginExternoAsync(string externalAccessToken)
+    {
+        var response = await _apiClient.LoginEntraAsync(externalAccessToken);
+
+        if (response is null)
+        {
+            return LoginResult.Fail(
+                "No se recibió respuesta del servidor.");
+        }
+
+        if (!response.Success || response.Data is null)
+        {
+            return LoginResult.Fail(
+                response.Message ?? "No fue posible iniciar sesión con Microsoft.");
+        }
+
+        // Misma sesión que el login normal: refresh, roles y offline siguen igual.
+        await _tokenStorage.SaveAsync(response.Data);
+
+        return LoginResult.Ok(response.Data);
+    }
+
     public async Task LogoutAsync()
     {
         var session = await _tokenStorage.GetAsync();

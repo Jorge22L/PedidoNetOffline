@@ -21,5 +21,8 @@ namespace PedidoNet.UI.Shared.Auth
         /// (solo se renueva si el token está por expirar).
         /// </param>
         Task<LoginResult> RefreshSessionAsync(string? failedAccessToken = null);
+
+        /// <summary>Login con un token de un proveedor externo (Entra ID).</summary>
+        Task<LoginResult> LoginExternoAsync(string externalAccessToken);
     }
 }

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -54,6 +55,22 @@ namespace PedidoNet.UI.Shared.Auth
                 "api/v1/Auth/revoke",
                 request,
                 cancellationToken);
+        }
+
+        public async Task<ApiResponse<LoginResponse>?> LoginEntraAsync(string entraAccessToken, CancellationToken cancellationToken = default)
+        {
+            /*
+             * Usa el HttpClient SIN AuthenticatedHttpHandler (PedidoNetApi):
+             * el handler reemplazaría este header por el JWT propio.
+             */
+            using var request = new HttpRequestMessage(HttpMethod.Post, "api/v1/Auth/entra");
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", entraAccessToken);
+
+            using var httpResponse = await _httpClient.SendAsync(request, cancellationToken);
+
+            return await ReadResponseAsync(httpResponse, cancellationToken);
         }
 
         private static async Task<ApiResponse<LoginResponse>?> ReadResponseAsync(

@@ -9,6 +9,7 @@
 @inject IProductoService ProductoService
 @inject IConnectivityService Connectivity
 @inject NavigationManager Navigation
+@inject ICameraService Camera
 
 <PageTitle>Editar producto</PageTitle>
 
@@ -54,6 +55,21 @@
                 @if (productoId.HasValue && Connectivity.IsOnline)
                 {
                     <ProductoImageManager OnUpload="SubirImagenAsync" />
+                    @if (Camera.IsSupported)
+                    {
+                        <div class="mt-3 d-flex gap-2">
+                            <button type="button" class="btn btn-outline-primary"
+                            disabled="@subiendoFoto" @onclick="TomarFotoAsync">
+                            Tomar Foto
+                            </button>
+                        </div>
+
+                        @if(ultimaFoto is not null)
+                        {
+                            <img src="@ultimaFoto.ToDataUrl()" alt="Última foto"
+                            class="img-thumbnail mt-3" style="max-height: 200px;"/>
+                        }
+                    }
                 }
                 else
                 {
@@ -81,6 +97,9 @@
     private bool isSaving;
     private bool notFound;
     private string? errorMessage;
+
+    private DevicePhoto? ultimaFoto;
+    private bool subiendoFoto;
 
     protected override async Task OnInitializedAsync()
     {
@@ -183,6 +202,51 @@
         catch(HttpRequestException ex)
         {
             errorMessage = $"No fue posible subir la imagen. {ex.Message}";
+        }
+    }
+
+    private async Task TomarFotoAsync()
+    {
+        if (!productoId.HasValue)
+            return;
+
+        try
+        {
+            subiendoFoto = true;
+            errorMessage = null;
+
+            var foto = await Camera.CapturePhotoAsync();
+
+            if(foto is null)
+            {
+                return; // Cancelado
+            }
+            await ProductoService.SubirImagenAsync(productoId.Value, new ProductoImageUpload
+                {
+                    Stream = new MemoryStream(foto.Content),
+                    FileName = foto.FileName,
+                    ContentType = foto.ContentType,
+                    Length = foto.Content.Length,
+                    EsPrincipal = false
+                });
+
+            ultimaFoto = foto;
+        }
+        catch (DeviceFeatureException e)
+        {
+            errorMessage = e.Message;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException e)
+        {
+            errorMessage = $"No fue posible subir la foto. {e.Message}";
+        }
+        finally
+        {
+            subiendoFoto = false;
         }
     }
 }
