@@ -62,6 +62,8 @@
         <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.110" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.110" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
+        <!-- MSAL.NET: login con Microsoft Entra ID -->
+        <PackageReference Include="Microsoft.Identity.Client" Version="4.84.2" />
         <!-- SQLite: almacenamiento offline de Productos -->
         <PackageReference Include="sqlite-net-pcl" Version="1.11.285" />
         <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />

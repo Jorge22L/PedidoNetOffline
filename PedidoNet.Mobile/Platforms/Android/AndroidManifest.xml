@@ -1,6 +1,20 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:supportsRtl="true"></application>
+	<application android:allowBackup="true" android:icon="@mipmap/appicon" android:supportsRtl="true">
+
+		<!-- MSAL: recibe la respuesta del login de Microsoft (redirect msal{ClientId}://auth) -->
+		<activity android:name="microsoft.identity.client.BrowserTabActivity"
+				  android:configChanges="orientation|screenSize"
+				  android:exported="true">
+			<intent-filter>
+				<action android:name="android.intent.action.VIEW" />
+				<category android:name="android.intent.category.DEFAULT" />
+				<category android:name="android.intent.category.BROWSABLE" />
+				<data android:scheme="msal90644667-6d60-47ab-aa15-91e747d48c1d" android:host="auth" />
+			</intent-filter>
+		</activity>
+
+	</application>
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.INTERNET" />
 	<!-- Cámara: fotos y escáner QR/codigo de barras -->
@@ -19,6 +33,10 @@
 	<queries>
 		<intent>
 			<action android:name="android.media.action.IMAGE_CAPTURE" />
+		</intent>
+		<!-- Android 11+: necesario para que MSAL abra el navegador (Custom Tabs) -->
+		<intent>
+			<action android:name="android.support.customtabs.action.CustomTabsService" />
 		</intent>
 	</queries>
 </manifest>

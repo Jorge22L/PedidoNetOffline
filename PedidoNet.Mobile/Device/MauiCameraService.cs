@@ -1,4 +1,5 @@
-﻿using PedidoNet.UI.Shared.Device;
+﻿using Microsoft.AspNetCore.Components;
+using PedidoNet.UI.Shared.Device;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -11,10 +12,17 @@ namespace PedidoNet.Mobile.Device
         private const long MaxFileSize = 5 * 1024 * 1024;
 
         private readonly IDevicePermissionService _permissions;
+        private readonly ExternalActivityTracker _externalActivity;
+        private readonly NavigationManager _navigation;
 
-        public MauiCameraService(IDevicePermissionService permissions)
+        public MauiCameraService(
+            IDevicePermissionService permissions,
+            ExternalActivityTracker externalActivity,
+            NavigationManager navigation)
         {
             _permissions = permissions;
+            _externalActivity = externalActivity;
+            _navigation = navigation;
         }
         public bool IsSupported => MediaPicker.Default.IsCaptureSupported;
 
@@ -28,11 +36,24 @@ namespace PedidoNet.Mobile.Device
             if (permiso != DevicePermissionStatus.Granted)
                 throw new DeviceFeatureException("Debes conceder el permiso de cámara");
 
-            var file = await MainThread.InvokeOnMainThreadAsync(() =>
-            MediaPicker.Default.CapturePhotoAsync(new MediaPickerOptions
+            // Si Android cierra la app mientras la cámara está abierta,
+            // al reiniciar se vuelve a esta misma página (Home.razor).
+            _externalActivity.Begin(ExternalActivityKind.Camera, CurrentRoute());
+
+            FileResult? file;
+
+            try
             {
-                Title = "Foto del producto"
-            }));
+                file = await MainThread.InvokeOnMainThreadAsync(() =>
+                MediaPicker.Default.CapturePhotoAsync(new MediaPickerOptions
+                {
+                    Title = "Foto del producto"
+                }));
+            }
+            finally
+            {
+                _externalActivity.End();
+            }
 
             return file is null ? null : await ToDevicePhotoAsync(file, cancellationToken);
         }
@@ -54,6 +75,14 @@ namespace PedidoNet.Mobile.Device
             return new DevicePhoto(file.FileName, contentType, memory.ToArray());
         }
 
+        /// <summary>Ruta actual sin query string, p. ej. "/productos/editar/{id}".</summary>
+        private string CurrentRoute()
+        {
+            var relative = _navigation.ToBaseRelativePath(_navigation.Uri);
+
+            return "/" + relative.Split('?', '#')[0];
+        }
+
         private static string GuessContentType(string fileName) =>
             Path.GetExtension(fileName).ToLowerInvariant() switch
             {
@@ -64,13 +93,24 @@ namespace PedidoNet.Mobile.Device
 
         public async Task<DevicePhoto?> PickPhotoAsync(CancellationToken cancellationToken = default)
         {
-            var results = await MainThread.InvokeOnMainThreadAsync(() =>
-            MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions
-            {
-                Title = "Seleccionar imagen"
-            }));
+            _externalActivity.Begin(ExternalActivityKind.Gallery, CurrentRoute());
 
-            var file = results?.FirstOrDefault();
+            FileResult? file;
+
+            try
+            {
+                var results = await MainThread.InvokeOnMainThreadAsync(() =>
+                MediaPicker.Default.PickPhotosAsync(new MediaPickerOptions
+                {
+                    Title = "Seleccionar imagen"
+                }));
+
+                file = results?.FirstOrDefault();
+            }
+            finally
+            {
+                _externalActivity.End();
+            }
 
             return file is null ? null : await ToDevicePhotoAsync(file, cancellationToken);
         }

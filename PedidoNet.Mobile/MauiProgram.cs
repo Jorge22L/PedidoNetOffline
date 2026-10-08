@@ -96,6 +96,29 @@ namespace PedidoNet.Mobile
                 AuthService>();
 
             // =========================================================
+            // LOGIN EXTERNO (Microsoft Entra ID) - MSAL.NET
+            //
+            // Login.razor (RCL) inyecta IExternalLoginProvider y muestra
+            // el botón "Iniciar sesión con Microsoft".
+            //
+            // ClientId: registro de app con la plataforma
+            // "Aplicaciones móviles y de escritorio" y los redirect:
+            //   msal{ClientId}://auth   (Android)
+            //   http://localhost        (Windows)
+            // =========================================================
+
+            builder.Services.AddSingleton(new EntraOptions
+            {
+                TenantId = "b7c36714-ed50-4acf-81db-dca76ad96a8c",
+                ClientId = "90644667-6d60-47ab-aa15-91e747d48c1d",
+                ApiScope = "api://210bdb7d-597c-45ac-baf9-688ccc91831d/access_as_user"
+            });
+
+            builder.Services.AddSingleton<
+                IExternalLoginProvider,
+                MsalExternalLoginProvider>();
+
+            // =========================================================
             // ESTADO DE AUTENTICACIÓN / AUTORIZACIÓN
             //
             // Habilita [Authorize], AuthorizeRouteView y AuthorizeView.
@@ -247,7 +270,12 @@ namespace PedidoNet.Mobile
         public static void ConfigureDevice(IServiceCollection services)
         {
             services.AddSingleton<IDevicePermissionService, MauiDevicePermissionService>();
-            services.AddSingleton<ICameraService, MauiCameraService>();
+
+            // Marca en Preferences cuando la app sale a cámara, galería o login de Microsoft.
+            services.AddSingleton<ExternalActivityTracker>();
+
+            // Scoped: usa NavigationManager para recordar la página actual.
+            services.AddScoped<ICameraService, MauiCameraService>();
         }
     }
 }

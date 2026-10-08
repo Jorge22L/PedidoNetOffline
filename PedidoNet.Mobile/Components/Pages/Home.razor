@@ -1,11 +1,41 @@
 ﻿@page "/"
 
+@using PedidoNet.Mobile.Device
+@using PedidoNet.UI.Shared.Auth
+
+@inject ExternalActivityTracker ExternalActivity
+@inject IAuthService AuthService
 @inject NavigationManager Navigation
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Flujo de la app: primero login, después Productos.
+        /*
+         * ¿La app se reinició mientras el usuario estaba en otra app
+         * (cámara, galería o navegador del login de Microsoft)?
+         * Android puede cerrar PedidoNet en segundo plano por falta de memoria.
+         */
+        var marker = ExternalActivity.Consume();
+
+        if (marker is { Kind: ExternalActivityKind.Camera or ExternalActivityKind.Gallery, ReturnRoute: not null })
+        {
+            var session = await AuthService.GetSessionAsync();
+
+            if (PedidoNetAuthenticationStateProvider.IsValidSession(session))
+            {
+                // Volver a la página donde se tomó la foto, sin pedir login.
+                Navigation.NavigateTo($"{marker.ReturnRoute}?reanudado=camara", replace: true);
+                return;
+            }
+        }
+
+        if (marker is { Kind: ExternalActivityKind.MicrosoftLogin })
+        {
+            Navigation.NavigateTo("/login?reanudado=microsoft", replace: true);
+            return;
+        }
+
+        // Inicio normal de la app: primero login, después Productos.
         Navigation.NavigateTo("/login", replace: true);
     }
 }

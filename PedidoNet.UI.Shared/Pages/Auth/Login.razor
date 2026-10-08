@@ -23,6 +23,13 @@
             <p>Inicia sesión para continuar.</p>
         </div>
 
+        @if (Reanudado == "microsoft")
+        {
+            <AlertMessage Variant="info"
+                          Message="La app se reinició mientras iniciabas sesión con Microsoft. Intenta nuevamente."
+                          Dismissible="false" />
+        }
+
         <LoginForm OnLoginSuccess="LoginExitoso" />
         @if (ExternalLogin.IsSupported)
         {
@@ -42,6 +49,13 @@
 </div>
 
 @code {
+    /// <summary>
+    /// Lo envía el host cuando la app se reinició durante una actividad
+    /// externa (p. ej. Mobile tras el login de Microsoft en el navegador).
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "reanudado")]
+    public string? Reanudado { get; set; }
+
     private bool procesandoSso;
     private string? errorSso;
 

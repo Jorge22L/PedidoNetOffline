@@ -33,6 +33,14 @@
     }
     else
     {
+        @if (Reanudado == "camara")
+        {
+            <AlertMessage
+                Variant="info"
+                Message="La app se reinició mientras usabas la cámara. Toma la foto nuevamente."
+                Dismissible="false" />
+        }
+
         <AlertMessage
             Message="@errorMessage"
             Dismissible="false" />
@@ -88,6 +96,12 @@
 @code {
     [Parameter]
     public Guid LocalId { get; set; }
+
+    /// <summary>
+    /// Lo envía el host cuando la app se reinició mientras se usaba la cámara.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "reanudado")]
+    public string? Reanudado { get; set; }
 
     private int? productoId;
 
