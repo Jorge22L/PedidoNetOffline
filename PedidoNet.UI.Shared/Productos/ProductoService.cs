@@ -185,6 +185,34 @@ namespace PedidoNet.UI.Shared.Productos
             return _apiClient.UploadImageAsync(productoId, image, cancellationToken);
         }
 
+        public async Task<List<ProductoImagenDTO>> ObtenerImagenesAsync(int productoId, CancellationToken cancellationToken = default)
+        {
+            // El almacenamiento local no guarda imágenes: se consultan a la API.
+            var producto = await _apiClient.GetByIdAsync(productoId, cancellationToken);
+
+            if (producto is null)
+            {
+                return [];
+            }
+
+            return producto.Imagenes
+                .OrderByDescending(x => x.EsPrincipal)
+                .ThenBy(x => x.ProductoImagenId)
+                .ToList();
+        }
+
+        public async Task EliminarImagenAsync(int productoId, int productoImagenId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await _apiClient.DeleteImageAsync(productoId, productoImagenId, cancellationToken);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Ya no existe en el servidor: el objetivo se cumplió.
+            }
+        }
+
         public string ObtenerUrlImagen(string ruta)
         {
             return _apiClient.BuildImageUrl(ruta);

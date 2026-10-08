@@ -17,7 +17,11 @@
 
     <PageHeader
         Title="Editar producto"
-        Description="Actualiza la información del producto." />
+        Description="Actualiza la información del producto.">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="productos">&larr; Volver a productos</a>
+        </Actions>
+    </PageHeader>
 
     @if (isLoading)
     {
@@ -62,21 +66,22 @@
                 *@
                 @if (productoId.HasValue && Connectivity.IsOnline)
                 {
+                    <ProductoImageGallery
+                        Imagenes="@imagenes"
+                        UrlResolver="@ProductoService.ObtenerUrlImagen"
+                        IsLoading="@cargandoImagenes"
+                        EliminandoId="@eliminandoImagenId"
+                        OnEliminar="EliminarImagenAsync" />
+
                     <ProductoImageManager OnUpload="SubirImagenAsync" />
                     @if (Camera.IsSupported)
                     {
                         <div class="mt-3 d-flex gap-2">
                             <button type="button" class="btn btn-outline-primary"
                             disabled="@subiendoFoto" @onclick="TomarFotoAsync">
-                            Tomar Foto
+                            @(subiendoFoto ? "Subiendo foto..." : "Tomar Foto")
                             </button>
                         </div>
-
-                        @if(ultimaFoto is not null)
-                        {
-                            <img src="@ultimaFoto.ToDataUrl()" alt="Última foto"
-                            class="img-thumbnail mt-3" style="max-height: 200px;"/>
-                        }
                     }
                 }
                 else
@@ -112,8 +117,11 @@
     private bool notFound;
     private string? errorMessage;
 
-    private DevicePhoto? ultimaFoto;
     private bool subiendoFoto;
+
+    private List<ProductoImagenDTO> imagenes = [];
+    private bool cargandoImagenes;
+    private int? eliminandoImagenId;
 
     protected override async Task OnInitializedAsync()
     {
@@ -151,6 +159,73 @@
         finally
         {
             isLoading = false;
+        }
+
+        await CargarImagenesAsync();
+    }
+
+    /*
+     * Las imágenes no se guardan offline: se consultan a la API
+     * solo si hay conexión y el producto ya existe en el servidor.
+     */
+    private async Task CargarImagenesAsync()
+    {
+        if (!productoId.HasValue || !Connectivity.IsOnline)
+        {
+            imagenes = [];
+            return;
+        }
+
+        try
+        {
+            cargandoImagenes = true;
+
+            imagenes = await ProductoService.ObtenerImagenesAsync(productoId.Value);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"No fue posible cargar las imágenes. {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            errorMessage = "El servidor tardó demasiado en devolver las imágenes.";
+        }
+        finally
+        {
+            cargandoImagenes = false;
+        }
+    }
+
+    private async Task EliminarImagenAsync(ProductoImagenDTO imagen)
+    {
+        if (!productoId.HasValue)
+            return;
+
+        try
+        {
+            eliminandoImagenId = imagen.ProductoImagenId;
+            errorMessage = null;
+
+            await ProductoService.EliminarImagenAsync(productoId.Value, imagen.ProductoImagenId);
+
+            // Recarga para reflejar también la nueva imagen principal.
+            await CargarImagenesAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"No fue posible eliminar la imagen. {ex.Message}";
+        }
+        finally
+        {
+            eliminandoImagenId = null;
         }
     }
 
@@ -208,6 +283,8 @@
             errorMessage = null;
 
             await ProductoService.SubirImagenAsync(productoId.Value, image);
+
+            await CargarImagenesAsync();
         }
         catch(UnauthorizedAccessException)
         {
@@ -244,7 +321,7 @@
                     EsPrincipal = false
                 });
 
-            ultimaFoto = foto;
+            await CargarImagenesAsync();
         }
         catch (DeviceFeatureException e)
         {

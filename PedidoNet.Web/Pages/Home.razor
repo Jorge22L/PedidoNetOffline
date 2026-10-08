@@ -1,10 +1,24 @@
 ﻿@page "/"
 
+@using PedidoNet.UI.Shared.Auth
+
+@inject IAuthService AuthService
 @inject NavigationManager Navigation
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        Navigation.NavigateTo("/login");
+        /*
+         * Con una sesión válida (refresh token vigente) se entra directo
+         * a Productos; así el logo o la raíz del sitio no obligan a
+         * iniciar sesión otra vez. Sin sesión, se va al login.
+         */
+        var session = await AuthService.GetSessionAsync();
+
+        Navigation.NavigateTo(
+            PedidoNetAuthenticationStateProvider.IsValidSession(session)
+                ? "/productos"
+                : "/login",
+            replace: true);
     }
 }

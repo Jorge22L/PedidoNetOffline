@@ -136,6 +136,18 @@ public sealed class ProductosApiClient
                 "La API no devolvió información de la imagen.");
     }
 
+    public async Task DeleteImageAsync(
+        int productoId,
+        int productoImagenId,
+        CancellationToken cancellationToken = default)
+    {
+        using var response = await _httpClient.DeleteAsync(
+            $"api/v1/Producto/{productoId}/imagenes/{productoImagenId}",
+            cancellationToken);
+
+        await EnsureSuccessAsync(response);
+    }
+
     /// <summary>
     /// La API devuelve rutas relativas (/uploads/productos/...).
     /// Se resuelven contra la BaseAddress configurada en el host.

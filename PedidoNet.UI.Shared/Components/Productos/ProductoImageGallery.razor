@@ -1,0 +1,124 @@
+﻿@using PedidoNet.UI.Shared.Models.Productos
+
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-body">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Imágenes del producto</h5>
+
+            @if (Imagenes is { Count: > 0 })
+            {
+                <span class="badge text-bg-light">@Imagenes.Count</span>
+            }
+        </div>
+
+        @if (IsLoading)
+        {
+            <LoadingIndicator Message="Cargando imágenes..." />
+        }
+        else if (Imagenes is null || Imagenes.Count == 0)
+        {
+            <p class="text-secondary mb-0">Este producto aún no tiene imágenes.</p>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var imagen in Imagenes)
+                {
+                    <div class="col-6 col-md-4 col-xl-3" @key="imagen.ProductoImagenId">
+                        <div class="card h-100 @(imagen.EsPrincipal ? "border-primary" : string.Empty)">
+
+                            <a href="@UrlResolver(imagen.Ruta)" target="_blank" rel="noopener">
+                                <img src="@UrlResolver(imagen.Ruta)"
+                                     alt="@(imagen.NombreOriginal ?? "Imagen del producto")"
+                                     class="card-img-top"
+                                     style="height: 160px; object-fit: cover;"
+                                     loading="lazy" />
+                            </a>
+
+                            <div class="card-body p-2 d-flex flex-column gap-2">
+
+                                <div class="small text-truncate" title="@imagen.NombreOriginal">
+                                    @(imagen.NombreOriginal ?? "Sin nombre")
+                                </div>
+
+                                @if (imagen.EsPrincipal)
+                                {
+                                    <span class="badge text-bg-primary align-self-start">Principal</span>
+                                }
+
+                                @if (confirmandoId == imagen.ProductoImagenId)
+                                {
+                                    <div class="d-flex gap-1 mt-auto">
+                                        <button type="button"
+                                                class="btn btn-sm btn-danger flex-fill"
+                                                disabled="@(EliminandoId is not null)"
+                                                @onclick="() => ConfirmarAsync(imagen)">
+                                            @(EliminandoId == imagen.ProductoImagenId ? "Eliminando..." : "Sí, eliminar")
+                                        </button>
+
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-secondary"
+                                                disabled="@(EliminandoId is not null)"
+                                                @onclick="CancelarConfirmacion">
+                                            No
+                                        </button>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-danger mt-auto"
+                                            disabled="@(EliminandoId is not null)"
+                                            @onclick="() => PedirConfirmacion(imagen)">
+                                        Eliminar
+                                    </button>
+                                }
+
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ProductoImagenDTO>? Imagenes { get; set; }
+
+    /// <summary>Convierte la ruta relativa de la API en URL absoluta.</summary>
+    [Parameter, EditorRequired]
+    public Func<string, string> UrlResolver { get; set; } = ruta => ruta;
+
+    [Parameter]
+    public bool IsLoading { get; set; }
+
+    /// <summary>Id de la imagen que se está eliminando (deshabilita los botones).</summary>
+    [Parameter]
+    public int? EliminandoId { get; set; }
+
+    [Parameter]
+    public EventCallback<ProductoImagenDTO> OnEliminar { get; set; }
+
+    private int? confirmandoId;
+
+    private void PedirConfirmacion(ProductoImagenDTO imagen)
+    {
+        confirmandoId = imagen.ProductoImagenId;
+    }
+
+    private void CancelarConfirmacion()
+    {
+        confirmandoId = null;
+    }
+
+    private async Task ConfirmarAsync(ProductoImagenDTO imagen)
+    {
+        await OnEliminar.InvokeAsync(imagen);
+
+        confirmandoId = null;
+    }
+}

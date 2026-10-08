@@ -3,9 +3,11 @@
 <div class="app-shell">
     <header class="app-header">
         <div class="container-fluid app-header-inner">
-            <a class="app-brand" href="/">
+
+            @* "/" decide: con sesión válida -> Productos; sin sesión -> Login *@
+            <a class="app-brand" href="">
                 <div class="app-brand-icon">
-                    <img src="pedidoNet-192.png" />
+                    <img src="pedidoNet-192.png" alt="" />
                 </div>
                 <div>
                     <div class="app-brand-title">
@@ -18,8 +20,11 @@
                 </div>
             </a>
 
+            <AppNavMenu />
+
             <div class="app-header-actions">
                 <ConnectionStatus />
+                <UserMenu />
             </div>
         </div>
     </header>
@@ -30,7 +35,7 @@
 
     <footer class="app-footer">
         <div class="container-fluid">
-            PedidoNet . Blazor WebAssembly PWA
+            PedidoNet &middot; Blazor WebAssembly PWA
         </div>
     </footer>
-</div>=== ./Models/Auth/TokenStorage.cs
+</div>

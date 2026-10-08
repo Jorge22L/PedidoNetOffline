@@ -168,6 +168,24 @@ namespace PedidoNet.Mobile
             ConfigureOffline(builder.Services);
             ConfigureDevice(builder.Services);
 
+#if ANDROID
+            // =========================================================
+            // IMÁGENES DE LA API EN EL WEBVIEW (Android)
+            //
+            // La app Blazor corre en https://0.0.0.0 y la API en desarrollo
+            // es http://10.0.2.2:8080. Android bloquea por defecto el
+            // contenido mixto (imágenes http dentro de una página https).
+            // Con la API en HTTPS esta configuración ya no es necesaria.
+            // =========================================================
+
+            Microsoft.AspNetCore.Components.WebView.Maui.BlazorWebViewHandler.BlazorWebViewMapper
+                .AppendToMapping("PermitirImagenesApiHttp", (handler, view) =>
+                {
+                    handler.PlatformView.Settings.MixedContentMode =
+                        Android.Webkit.MixedContentHandling.AlwaysAllow;
+                });
+#endif
+
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
             builder.Logging.AddDebug();

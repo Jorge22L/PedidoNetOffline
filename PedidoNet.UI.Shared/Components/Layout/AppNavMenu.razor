@@ -1,0 +1,58 @@
+﻿@*
+    Navegación principal compartida (Web y Mobile).
+    Solo se muestra con sesión iniciada.
+    En pantallas pequeñas se colapsa detrás de un botón (sin JavaScript).
+*@
+
+<AuthorizeView>
+    <Authorized>
+        <button type="button"
+                class="app-nav-toggler"
+                aria-label="Abrir menú de navegación"
+                aria-expanded="@(abierto ? "true" : "false")"
+                @onclick="Alternar">
+            @(abierto ? "✕" : "☰")
+        </button>
+
+        <nav class="app-nav @(abierto ? "open" : string.Empty)"
+             aria-label="Navegación principal"
+             @onclick="Cerrar">
+
+            @foreach (var item in Items)
+            {
+                if (item.Roles is null || item.Roles.Any(context.User.IsInRole))
+                {
+                    <NavLink class="app-nav-link"
+                             href="@item.Href"
+                             Match="@item.Match">
+                        @item.Texto
+                    </NavLink>
+                }
+            }
+
+        </nav>
+    </Authorized>
+</AuthorizeView>
+
+@code {
+    private sealed record NavItem(
+        string Texto,
+        string Href,
+        NavLinkMatch Match = NavLinkMatch.Prefix,
+        string[]? Roles = null);
+
+    /*
+     * Agregar aquí los módulos nuevos (Clientes, Pedidos, Reportes...)
+     * cuando existan sus páginas. Roles = null => visible para todos.
+     */
+    private static readonly NavItem[] Items =
+    [
+        new("Productos", "productos")
+    ];
+
+    private bool abierto;
+
+    private void Alternar() => abierto = !abierto;
+
+    private void Cerrar() => abierto = false;
+}

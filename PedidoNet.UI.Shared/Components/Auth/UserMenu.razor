@@ -1,26 +1,77 @@
-﻿@using PedidoNet.UI.Shared.Auth
+﻿@using System.Security.Claims
+@using PedidoNet.UI.Shared.Auth
 
 @inject IAuthService AuthService
+@inject IExternalLoginProvider ExternalLogin
 @inject PedidoNetAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
 
 <AuthorizeView>
     <Authorized>
-        <span class="small text-secondary d-none d-sm-inline">
-            @context.User.Identity?.Name
-        </span>
+        @{
+            var nombre = context.User.Identity?.Name ?? "Usuario";
+            var rol = context.User.FindFirst(ClaimTypes.Role)?.Value;
+        }
 
-        <button type="button"
-                class="btn btn-sm btn-outline-secondary"
-                disabled="@cerrandoSesion"
-                @onclick="CerrarSesionAsync">
-            Salir
-        </button>
+        <div class="user-menu">
+            <button type="button"
+                    class="user-menu-trigger"
+                    aria-haspopup="true"
+                    aria-expanded="@(abierto ? "true" : "false")"
+                    title="@nombre"
+                    @onclick="Alternar">
+                <span class="user-avatar">@Iniciales(nombre)</span>
+                <span class="user-menu-name">@nombre</span>
+            </button>
+
+            @if (abierto)
+            {
+                @* Capa transparente: un clic fuera del panel lo cierra. *@
+                <div class="user-menu-backdrop" @onclick="Cerrar"></div>
+
+                <div class="user-menu-panel" role="menu">
+                    <div class="user-menu-header">
+                        <div class="fw-semibold text-truncate">@nombre</div>
+
+                        @if (!string.IsNullOrWhiteSpace(rol))
+                        {
+                            <div class="small text-secondary">@rol</div>
+                        }
+                    </div>
+
+                    <button type="button"
+                            class="user-menu-item text-danger"
+                            role="menuitem"
+                            disabled="@cerrandoSesion"
+                            @onclick="CerrarSesionAsync">
+                        @(cerrandoSesion ? "Cerrando sesión..." : "Cerrar sesión")
+                    </button>
+                </div>
+            }
+        </div>
     </Authorized>
 </AuthorizeView>
 
 @code {
+    private bool abierto;
     private bool cerrandoSesion;
+
+    private void Alternar() => abierto = !abierto;
+
+    private void Cerrar() => abierto = false;
+
+    private static string Iniciales(string nombre)
+    {
+        var partes = nombre
+            .Split([' ', '.', '_', '@'], StringSplitOptions.RemoveEmptyEntries);
+
+        return partes.Length switch
+        {
+            0 => "?",
+            1 => partes[0][..Math.Min(2, partes[0].Length)].ToUpperInvariant(),
+            _ => $"{partes[0][0]}{partes[1][0]}".ToUpperInvariant()
+        };
+    }
 
     private async Task CerrarSesionAsync()
     {
@@ -32,10 +83,21 @@
             cerrandoSesion = true;
 
             await AuthService.LogoutAsync();
+
+            try
+            {
+                // Olvida la cuenta de Microsoft (si se usó SSO) para poder elegir otra.
+                await ExternalLogin.SignOutAsync();
+            }
+            catch (Exception)
+            {
+                // No debe impedir cerrar la sesión propia.
+            }
         }
         finally
         {
             cerrandoSesion = false;
+            abierto = false;
 
             await AuthStateProvider.NotifySessionChangedAsync();
 
