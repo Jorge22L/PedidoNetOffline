@@ -18,7 +18,7 @@
              aria-label="Navegación principal"
              @onclick="Cerrar">
 
-            @foreach (var item in Items)
+            @foreach (var item in Items.Concat(ItemsAdicionales ?? Array.Empty<NavItem>()))
             {
                 if (item.Roles is null || item.Roles.Any(context.User.IsInRole))
                 {
@@ -35,11 +35,15 @@
 </AuthorizeView>
 
 @code {
-    private sealed record NavItem(
+    public sealed record NavItem(
         string Texto,
         string Href,
         NavLinkMatch Match = NavLinkMatch.Prefix,
         string[]? Roles = null);
+
+    /// <summary>Ítems propios del host (p. ej. Reportes solo en Web).</summary>
+    [Parameter]
+    public IReadOnlyList<NavItem>? ItemsAdicionales { get; set; }
 
     /*
      * Agregar aquí los módulos nuevos (Clientes, Pedidos, Reportes...)

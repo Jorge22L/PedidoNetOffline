@@ -8,6 +8,7 @@ using PedidoNet.UI.Shared.Offline;
 using PedidoNet.UI.Shared.Offline.Productos;
 using PedidoNet.UI.Shared.Pedidos;
 using PedidoNet.UI.Shared.Productos;
+using PedidoNet.UI.Shared.Reportes;
 using PedidoNet.Web;
 using PedidoNet.Web.Models.Auth;
 using PedidoNet.Web.Services;
@@ -130,6 +131,13 @@ builder.Services.AddScoped<PedidosApiClient>(sp =>
 
 builder.Services.AddScoped<IClienteService, ClienteService>();
 builder.Services.AddScoped<IPedidoService, PedidoService>();
+
+builder.Services.AddScoped<ReportesApiClient>(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+
+    return new ReportesApiClient(httpClientFactory.CreateClient("PedidoNetAuthenticatedApi"));
+});
 
 
 await builder.Build().RunAsync();

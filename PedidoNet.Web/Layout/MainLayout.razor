@@ -17,6 +17,8 @@
                     <div class="app-brand-subtitle">
                         Gestión de Pedidos
                     </div>
+
+                    <AppNavMenu ItemsAdicionales="@ItemsWeb" />
                 </div>
             </a>
 
@@ -39,3 +41,10 @@
         </div>
     </footer>
 </div>
+
+@code {
+    private static readonly AppNavMenu.NavItem[] ItemsWeb =
+    [
+        new("Reportes", "reportes/pedidos")
+    ];
+}

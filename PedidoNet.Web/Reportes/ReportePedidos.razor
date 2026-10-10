@@ -1,0 +1,335 @@
+﻿@page "/reportes/pedidos"
+@attribute [Authorize]
+@implements IAsyncDisposable
+
+@using Microsoft.AspNetCore.Authorization
+@using PedidoNet.UI.Shared.Clientes
+@using PedidoNet.UI.Shared.Models.Clientes
+@using PedidoNet.UI.Shared.Models.Pedidos
+@using PedidoNet.UI.Shared.Offline
+@using PedidoNet.UI.Shared.Reportes
+
+@inject ReportesApiClient Reportes
+@inject IClienteService ClienteService
+@inject IConnectivityService Connectivity
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<PageTitle>Reportes de pedidos - PedidoNet</PageTitle>
+
+<div class="container-fluid px-3 px-md-4 py-4">
+
+    <PageHeader Title="Reportes de pedidos"
+                Description="Genera el reporte, revísalo en pantalla e imprímelo o expórtalo." />
+
+    @if (!Connectivity.IsOnline)
+    {
+        <AlertMessage Variant="warning"
+                      Message="Los reportes se generan en el servidor: necesitas conexión."
+                      Dismissible="false" />
+    }
+
+    <AlertMessage Message="@errorMessage"
+                  Dismissible="false" />
+
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body">
+
+            <div class="btn-group mb-3" role="group" aria-label="Tipo de reporte">
+                <button type="button"
+                        class="btn @(tipo == TipoReporte.Listado ? "btn-primary" : "btn-outline-primary")"
+                        @onclick="() => CambiarTipo(TipoReporte.Listado)">
+                    Listado de pedidos
+                </button>
+
+                <button type="button"
+                        class="btn @(tipo == TipoReporte.Comprobante ? "btn-primary" : "btn-outline-primary")"
+                        @onclick="() => CambiarTipo(TipoReporte.Comprobante)">
+                    Comprobante de pedido
+                </button>
+            </div>
+
+            @if (tipo == TipoReporte.Listado)
+            {
+                <div class="row g-2">
+
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small mb-1">Desde</label>
+                        <input type="date" class="form-control" @bind="filtro.Desde" />
+                    </div>
+
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small mb-1">Hasta</label>
+                        <input type="date" class="form-control" @bind="filtro.Hasta" />
+                    </div>
+
+                    <div class="col-12 col-md-2">
+                        <label class="form-label small mb-1">Estado</label>
+                        <select class="form-select" @bind="filtro.Estado">
+                            <option value="">Todos</option>
+                            @foreach (var estado in EstadosPedido.Todos)
+                            {
+                                <option value="@estado">@estado</option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                        <label class="form-label small mb-1">Cliente</label>
+                        <select class="form-select" @bind="clienteSeleccionado">
+                            <option value="0">Todos los clientes</option>
+                            @foreach (var cliente in clientes)
+                            {
+                                <option value="@cliente.ClienteId">@cliente.Nombre</option>
+                            }
+                        </select>
+                    </div>
+
+                </div>
+            }
+            else
+            {
+                <div class="row g-2">
+                    <div class="col-6 col-md-3">
+                        <label class="form-label small mb-1">Número de pedido</label>
+                        <input type="number" min="1" class="form-control" @bind="pedidoId" />
+                    </div>
+                </div>
+            }
+
+            <div class="d-flex flex-wrap gap-2 mt-3">
+
+                <button type="button"
+                        class="btn btn-primary"
+                        disabled="@(generando || !Connectivity.IsOnline)"
+                        @onclick="VistaPreviaAsync">
+                    @if (generando)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        <span>Generando...</span>
+                    }
+                    else
+                    {
+                        <span>Vista previa</span>
+                    }
+                </button>
+
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        disabled="@(!hayVistaPrevia || generando)"
+                        @onclick="ImprimirAsync">
+                    Imprimir
+                </button>
+
+                <div class="vr d-none d-md-block"></div>
+
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        disabled="@(generando || !Connectivity.IsOnline)"
+                        @onclick="() => DescargarAsync(FormatoReporte.Pdf)">
+                    PDF
+                </button>
+
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        disabled="@(generando || !Connectivity.IsOnline)"
+                        @onclick="() => DescargarAsync(FormatoReporte.Excel)">
+                    Excel
+                </button>
+
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        disabled="@(generando || !Connectivity.IsOnline)"
+                        @onclick="() => DescargarAsync(FormatoReporte.Word)">
+                    Word
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+
+    @* El iframe siempre existe para que JS lo encuentre; se oculta hasta que hay vista previa *@
+    <div class="card border-0 shadow-sm @(hayVistaPrevia ? string.Empty : "d-none")">
+        <iframe id="@VisorId"
+                title="Vista previa del reporte"
+                class="w-100 border-0 rounded-3 bg-white"
+                style="height: 75vh;"></iframe>
+    </div>
+
+    @if (!hayVistaPrevia && !generando)
+    {
+        <div class="text-center text-secondary py-5">
+            Selecciona los filtros y presiona <strong>Vista previa</strong>.
+        </div>
+    }
+
+</div>
+
+@code {
+    private enum TipoReporte
+    {
+        Listado,
+        Comprobante
+    }
+
+    private const string VisorId = "visor-reporte";
+
+    /// <summary>/reportes/pedidos?pedidoId=15 abre directamente el comprobante.</summary>
+    [SupplyParameterFromQuery(Name = "pedidoId")]
+    public int? PedidoIdQuery { get; set; }
+
+    private readonly ReportePedidosFiltro filtro = new()
+    {
+        Desde = DateOnly.FromDateTime(DateTime.Today.AddDays(-30)),
+        Hasta = DateOnly.FromDateTime(DateTime.Today)
+    };
+
+    private TipoReporte tipo = TipoReporte.Listado;
+    private int? pedidoId;
+    private int clienteSeleccionado;
+
+    private List<ClienteDto> clientes = [];
+
+    private bool generando;
+    private bool hayVistaPrevia;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (PedidoIdQuery is > 0)
+        {
+            tipo = TipoReporte.Comprobante;
+            pedidoId = PedidoIdQuery;
+        }
+
+        try
+        {
+            clientes = await ClienteService.ObtenerTodosAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException)
+        {
+            // El filtro de clientes es opcional: el reporte se puede generar sin él.
+            clientes = [];
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && PedidoIdQuery is > 0)
+        {
+            await VistaPreviaAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task CambiarTipo(TipoReporte nuevo)
+    {
+        if (tipo == nuevo)
+            return;
+
+        tipo = nuevo;
+        errorMessage = null;
+        hayVistaPrevia = false;
+
+        await JS.InvokeVoidAsync("reportViewer.clear", VisorId);
+    }
+
+    private async Task VistaPreviaAsync()
+    {
+        var reporte = await ObtenerAsync(FormatoReporte.Vista);
+
+        if (reporte is null)
+            return;
+
+        using var stream = new MemoryStream(reporte.Contenido);
+        using var streamRef = new DotNetStreamReference(stream);
+
+        await JS.InvokeVoidAsync("reportViewer.show", VisorId, streamRef, reporte.ContentType);
+
+        hayVistaPrevia = true;
+    }
+
+    private async Task ImprimirAsync()
+    {
+        await JS.InvokeVoidAsync("reportViewer.print", VisorId);
+    }
+
+    private async Task DescargarAsync(FormatoReporte formato)
+    {
+        var reporte = await ObtenerAsync(formato);
+
+        if (reporte is null)
+            return;
+
+        using var stream = new MemoryStream(reporte.Contenido);
+        using var streamRef = new DotNetStreamReference(stream);
+
+        await JS.InvokeVoidAsync("reportViewer.download", reporte.NombreArchivo, streamRef, reporte.ContentType);
+    }
+
+    private async Task<ReporteDescargado?> ObtenerAsync(FormatoReporte formato)
+    {
+        errorMessage = null;
+
+        if (!Connectivity.IsOnline)
+        {
+            errorMessage = "Necesitas conexión para generar reportes.";
+            return null;
+        }
+
+        if (tipo == TipoReporte.Comprobante && pedidoId is not > 0)
+        {
+            errorMessage = "Escribe el número del pedido.";
+            return null;
+        }
+
+        try
+        {
+            generando = true;
+
+            if (tipo == TipoReporte.Listado)
+            {
+                filtro.ClienteId = clienteSeleccionado > 0 ? clienteSeleccionado : null;
+
+                return await Reportes.ObtenerListadoPedidosAsync(filtro, formato);
+            }
+
+            return await Reportes.ObtenerComprobanteAsync(pedidoId!.Value, formato);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            // Incluye ApiException: 404 (pedido no existe), 422 (PDF en Linux, fechas inválidas)...
+            errorMessage = ex.Message;
+        }
+        catch (TaskCanceledException)
+        {
+            errorMessage = "El servidor tardó demasiado en generar el reporte.";
+        }
+        finally
+        {
+            generando = false;
+        }
+
+        return null;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("reportViewer.clear", VisorId);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+}
