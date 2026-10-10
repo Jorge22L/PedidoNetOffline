@@ -15,4 +15,6 @@ public class GuardarClienteRequest
     public string? Direccion { get; set; }
 
     public bool EsConsumidorFinal { get; set; }
+    public decimal? Latitud { get; set; }
+    public decimal? Longitud { get; set; }
 }

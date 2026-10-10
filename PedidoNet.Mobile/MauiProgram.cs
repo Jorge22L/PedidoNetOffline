@@ -326,6 +326,9 @@ namespace PedidoNet.Mobile
 
             // Lectura de códigos de barras (cámara dentro de la app con ZXing).
             services.AddSingleton<IBarcodeScannerService, MauiBarcodeScannerService>();
+
+            // Geolocalización (GPS) + abrir la app de mapas.
+            services.AddSingleton<ILocationService, MauiLocationService>();
         }
     }
 }

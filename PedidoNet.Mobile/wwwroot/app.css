@@ -423,6 +423,65 @@ body {
         background: #f8fafc;
     }
 
+/* =========================================================
+   TOPBAR MÓVIL
+   - Respaldo por si el WebView reporta safe-area (no duplica:
+     si MAUI ya aplicó el margen, env() vale 0).
+   - Header compacto en pantallas angostas para que marca,
+     menú, estado de red y usuario no se encimen.
+   ========================================================= */
+
+.app-header {
+    padding-top: env(safe-area-inset-top, 0px);
+}
+
+@media (max-width: 575.98px) {
+
+    .app-header-inner {
+        min-height: 56px;
+        gap: 0.5rem;
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+
+    .app-brand-title {
+        font-size: 1rem;
+        white-space: nowrap;
+    }
+
+    .app-brand-subtitle {
+        display: none;
+    }
+
+    .app-header-actions {
+        gap: 0.4rem;
+        flex-shrink: 0;
+    }
+
+    .app-nav-toggler {
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
+    }
+
+    /* Estado de red: solo el punto de color (el texto se oculta) */
+    .connection-status {
+        padding: 0.4rem;
+        font-size: 0;
+        gap: 0;
+    }
+
+        .connection-status .connection-dot {
+            width: 10px;
+            height: 10px;
+        }
+
+    /* El menú desplegable empieza justo debajo del header */
+    .app-nav {
+        top: 100%;
+    }
+}
+
 @media (max-width: 575.98px) {
     .user-menu-name {
         display: none;

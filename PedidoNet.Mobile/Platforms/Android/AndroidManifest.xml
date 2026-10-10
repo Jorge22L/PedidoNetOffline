@@ -38,5 +38,10 @@
 		<intent>
 			<action android:name="android.support.customtabs.action.CustomTabsService" />
 		</intent>
+		<!-- Android 11+: para que Map.TryOpenAsync encuentre la app de mapas -->
+		<intent>
+			<action android:name="android.intent.action.VIEW" />
+			<data android:scheme="geo" />
+		</intent>
 	</queries>
 </manifest>

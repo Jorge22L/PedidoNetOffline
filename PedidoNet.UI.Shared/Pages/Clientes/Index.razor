@@ -11,6 +11,7 @@
 @inject IPedidoService PedidoService
 @inject IConnectivityService Connectivity
 @inject NavigationManager Navigation
+@inject ILocationService Location
 
 <PageTitle>Clientes - PedidoNet</PageTitle>
 
@@ -105,6 +106,14 @@
                 </td>
 
                 <td class="text-end text-nowrap">
+                    @if (Location.IsSupported && cliente.TieneUbicacion)
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary me-2"
+                                @onclick="@(() => VerEnMapaAsync(cliente))">
+                            Mapa
+                        </button>
+                    }
 
                     <button type="button"
                             class="btn btn-sm btn-outline-secondary me-2"
@@ -364,5 +373,20 @@
             OnConnectivityChanged;
 
         _loadLock.Dispose();
+    }
+
+    private async Task VerEnMapaAsync(ClienteDto cliente)
+    {
+        try
+        {
+            await Location.OpenMapAsync(
+                (double)cliente.Latitud!.Value,
+                (double)cliente.Longitud!.Value,
+                cliente.Nombre);
+        }
+        catch (DeviceFeatureException e)
+        {
+            errorMessage = e.Message;
+        }
     }
 }

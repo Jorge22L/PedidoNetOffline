@@ -19,13 +19,25 @@ public class ClienteFormModel
 
     public bool EsConsumidorFinal { get; set; } = true;
 
+    [Range(-90d, 90d, ErrorMessage = "La latitud debe estar entre -90 y 90.")]
+    public decimal? Latitud { get; set; }
+
+    [Range(-180d, 180d, ErrorMessage = "La longitud debe estar entre -180 y 180.")]
+    public decimal? Longitud { get; set; }
+
+    public double? PrecisionMetros { get; set; }
+
+    public bool TieneUbicacion => Latitud.HasValue && Longitud.HasValue;
+
     public static ClienteFormModel Desde(ClienteDto cliente) => new()
     {
         Nombre = cliente.Nombre,
         Cedula = cliente.Cedula,
         Telefono = cliente.Telefono,
         Direccion = cliente.Direccion,
-        EsConsumidorFinal = cliente.EsConsumidorFinal
+        EsConsumidorFinal = cliente.EsConsumidorFinal,
+        Latitud = cliente.Latitud,
+        Longitud = cliente.Longitud,
     };
 
     public GuardarClienteRequest ToRequest() => new()
@@ -34,6 +46,8 @@ public class ClienteFormModel
         Cedula = string.IsNullOrWhiteSpace(Cedula) ? null : Cedula.Trim(),
         Telefono = string.IsNullOrWhiteSpace(Telefono) ? null : Telefono.Trim(),
         Direccion = string.IsNullOrWhiteSpace(Direccion) ? null : Direccion.Trim(),
-        EsConsumidorFinal = EsConsumidorFinal
+        EsConsumidorFinal = EsConsumidorFinal,
+        Latitud = Latitud,
+        Longitud = Longitud
     };
 }

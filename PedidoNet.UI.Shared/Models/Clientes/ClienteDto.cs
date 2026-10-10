@@ -13,4 +13,7 @@ public class ClienteDto
     public string? Direccion { get; set; }
 
     public bool EsConsumidorFinal { get; set; }
+    public decimal? Latitud { get; set; }
+    public decimal? Longitud { get; set; }
+    public bool TieneUbicacion => Latitud.HasValue && Longitud.HasValue;
 }
