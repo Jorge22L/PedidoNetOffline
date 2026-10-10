@@ -1,0 +1,143 @@
+﻿@page "/clientes/editar/{Id:int}"
+@attribute [Authorize]
+
+@using PedidoNet.UI.Shared.Clientes
+@using PedidoNet.UI.Shared.Components.Clientes
+@using PedidoNet.UI.Shared.Models.Clientes
+@using PedidoNet.UI.Shared.Offline
+
+@inject IClienteService ClienteService
+@inject IConnectivityService Connectivity
+@inject NavigationManager Navigation
+
+<PageTitle>Editar cliente</PageTitle>
+
+<div class="container-fluid py-4">
+
+    <PageHeader Title="Editar cliente"
+                Description="Actualiza la información del cliente.">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="clientes">&larr; Volver a clientes</a>
+        </Actions>
+    </PageHeader>
+
+    @if (isLoading)
+    {
+        <LoadingIndicator Message="Cargando cliente..." />
+    }
+    else if (notFound)
+    {
+        <AlertMessage Variant="warning"
+                      Message="El cliente no existe."
+                      Dismissible="false" />
+    }
+    else
+    {
+        @if (!Connectivity.IsOnline)
+        {
+            <AlertMessage Variant="warning"
+                          Message="Necesitas conexión para guardar los cambios."
+                          Dismissible="false" />
+        }
+
+        <AlertMessage Message="@errorMessage"
+                      Dismissible="false" />
+
+        @if (cargado)
+        {
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+
+                    <ClienteForm Model="@model"
+                                 SubmitText="Guardar cambios"
+                                 IsSaving="@isSaving"
+                                 Disabled="@(!Connectivity.IsOnline)"
+                                 OnValidSubmit="GuardarAsync"
+                                 Cancel="Cancelar" />
+
+                </div>
+            </div>
+        }
+    }
+
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ClienteFormModel model = new();
+
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool notFound;
+    private bool cargado;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var cliente = await ClienteService.ObtenerPorIdAsync(Id);
+
+            if (cliente is null)
+            {
+                notFound = true;
+                return;
+            }
+
+            model = ClienteFormModel.Desde(cliente);
+            cargado = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"No fue posible cargar el cliente. {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task GuardarAsync()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            await ClienteService.ActualizarAsync(Id, model.ToRequest());
+
+            Navigation.NavigateTo("/clientes");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"No fue posible guardar el cliente. {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo("/clientes");
+    }
+}

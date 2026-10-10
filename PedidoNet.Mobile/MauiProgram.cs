@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
+using ZXing.Net.Maui.Controls;
 using Microsoft.Extensions.Logging;
 using PedidoNet.Mobile.Configuration;
 using PedidoNet.Mobile.Device;
@@ -7,9 +8,11 @@ using PedidoNet.Mobile.Service.Auth;
 using PedidoNet.Mobile.Service.Network;
 using PedidoNet.Mobile.Service.Offline;
 using PedidoNet.UI.Shared.Auth;
+using PedidoNet.UI.Shared.Clientes;
 using PedidoNet.UI.Shared.Device;
 using PedidoNet.UI.Shared.Offline;
 using PedidoNet.UI.Shared.Offline.Productos;
+using PedidoNet.UI.Shared.Pedidos;
 using PedidoNet.UI.Shared.Productos;
 
 namespace PedidoNet.Mobile
@@ -22,6 +25,7 @@ namespace PedidoNet.Mobile
 
             builder
                 .UseMauiApp<App>()
+                .UseBarcodeReader() // ZXing.Net.Maui: vista de cámara para códigos de barras
                 .ConfigureFonts(fonts =>
                 {
                     fonts.AddFont(
@@ -159,6 +163,31 @@ namespace PedidoNet.Mobile
             });
 
             // =========================================================
+            // CLIENTES Y PEDIDOS (en línea, mismas páginas de la RCL)
+            // =========================================================
+
+            builder.Services.AddScoped<ClientesApiClient>(sp =>
+            {
+                var httpClientFactory =
+                    sp.GetRequiredService<IHttpClientFactory>();
+
+                return new ClientesApiClient(
+                    httpClientFactory.CreateClient("PedidoNetAuthenticatedApi"));
+            });
+
+            builder.Services.AddScoped<PedidosApiClient>(sp =>
+            {
+                var httpClientFactory =
+                    sp.GetRequiredService<IHttpClientFactory>();
+
+                return new PedidosApiClient(
+                    httpClientFactory.CreateClient("PedidoNetAuthenticatedApi"));
+            });
+
+            builder.Services.AddScoped<IClienteService, ClienteService>();
+            builder.Services.AddScoped<IPedidoService, PedidoService>();
+
+            // =========================================================
             // OFFLINE-FIRST DE PRODUCTOS (SQLite + MAUI Connectivity)
             //
             // RCL = qué hacer   (ProductoService, ProductoSyncService)
@@ -294,6 +323,9 @@ namespace PedidoNet.Mobile
 
             // Scoped: usa NavigationManager para recordar la página actual.
             services.AddScoped<ICameraService, MauiCameraService>();
+
+            // Lectura de códigos de barras (cámara dentro de la app con ZXing).
+            services.AddSingleton<IBarcodeScannerService, MauiBarcodeScannerService>();
         }
     }
 }

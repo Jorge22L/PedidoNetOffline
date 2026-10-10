@@ -1,0 +1,88 @@
+﻿@page "/clientes/crear"
+@attribute [Authorize]
+
+@using PedidoNet.UI.Shared.Clientes
+@using PedidoNet.UI.Shared.Components.Clientes
+@using PedidoNet.UI.Shared.Models.Clientes
+@using PedidoNet.UI.Shared.Offline
+
+@inject IClienteService ClienteService
+@inject IConnectivityService Connectivity
+@inject NavigationManager Navigation
+
+<PageTitle>Nuevo cliente</PageTitle>
+
+<div class="container-fluid py-4">
+
+    <PageHeader Title="Nuevo cliente"
+                Description="Registra un cliente para asignarle pedidos.">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="clientes">&larr; Volver a clientes</a>
+        </Actions>
+    </PageHeader>
+
+    @if (!Connectivity.IsOnline)
+    {
+        <AlertMessage Variant="warning"
+                      Message="Necesitas conexión para registrar clientes."
+                      Dismissible="false" />
+    }
+
+    <AlertMessage Message="@errorMessage"
+                  Dismissible="false" />
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+
+            <ClienteForm Model="@model"
+                         SubmitText="Guardar cliente"
+                         IsSaving="@isSaving"
+                         Disabled="@(!Connectivity.IsOnline)"
+                         OnValidSubmit="GuardarAsync"
+                         Cancel="Cancelar" />
+
+        </div>
+    </div>
+
+</div>
+
+@code {
+    private readonly ClienteFormModel model = new();
+
+    private bool isSaving;
+    private string? errorMessage;
+
+    private async Task GuardarAsync()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            await ClienteService.CrearAsync(model.ToRequest());
+
+            Navigation.NavigateTo("/clientes");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"No fue posible guardar el cliente. {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo("/clientes");
+    }
+}

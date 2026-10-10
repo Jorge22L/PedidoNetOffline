@@ -1,0 +1,352 @@
+﻿@page "/pedidos/{Id:int}"
+@attribute [Authorize]
+
+@using PedidoNet.UI.Shared.Models.Pedidos
+@using PedidoNet.UI.Shared.Offline
+@using PedidoNet.UI.Shared.Pedidos
+
+@inject IPedidoService PedidoService
+@inject IConnectivityService Connectivity
+@inject NavigationManager Navigation
+
+<PageTitle>Pedido #@Id</PageTitle>
+
+<div class="container-fluid py-4">
+
+    <PageHeader Title="@($"Pedido #{Id}")"
+                Description="@(pedido?.ClienteNombre)">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="pedidos">&larr; Volver a pedidos</a>
+        </Actions>
+    </PageHeader>
+
+    @if (isLoading)
+    {
+        <LoadingIndicator Message="Cargando pedido..." />
+    }
+    else if (notFound)
+    {
+        <AlertMessage Variant="warning"
+                      Message="El pedido no existe."
+                      Dismissible="false" />
+    }
+    else if (pedido is null)
+    {
+        <AlertMessage Message="@errorMessage"
+                      Dismissible="false" />
+    }
+    else
+    {
+        <AlertMessage Variant="success"
+                      Message="@successMessage"
+                      Dismissible="false" />
+
+        <AlertMessage Message="@errorMessage"
+                      Dismissible="false" />
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+
+                <div class="d-flex flex-column flex-md-row justify-content-between gap-3">
+
+                    <dl class="row mb-0 flex-grow-1">
+                        <dt class="col-sm-4 col-lg-3 fw-normal text-secondary">Cliente</dt>
+                        <dd class="col-sm-8 col-lg-9 fw-semibold">@pedido.ClienteNombre</dd>
+
+                        <dt class="col-sm-4 col-lg-3 fw-normal text-secondary">Fecha</dt>
+                        <dd class="col-sm-8 col-lg-9">@pedido.Fecha.ToString("dd/MM/yyyy HH:mm")</dd>
+
+                        <dt class="col-sm-4 col-lg-3 fw-normal text-secondary">Forma de pago</dt>
+                        <dd class="col-sm-8 col-lg-9">@pedido.FormaPago</dd>
+
+                        <dt class="col-sm-4 col-lg-3 fw-normal text-secondary">Estado</dt>
+                        <dd class="col-sm-8 col-lg-9 mb-0">
+                            <span class="badge @EstadosPedido.BadgeCss(pedido.Estado)">@pedido.Estado</span>
+                        </dd>
+                    </dl>
+
+                    @* Solo los pedidos pendientes pueden modificarse (regla del dominio). *@
+                    @if (pedido.EsPendiente)
+                    {
+                        <div class="d-flex flex-wrap gap-2 align-self-start">
+
+                            <button type="button"
+                                    class="btn btn-outline-primary"
+                                    disabled="@(!Connectivity.IsOnline || procesando)"
+                                    @onclick="Editar">
+                                Editar
+                            </button>
+
+                            <button type="button"
+                                    class="btn btn-success"
+                                    disabled="@(!Connectivity.IsOnline || procesando)"
+                                    @onclick="@(() => SolicitarAccion(AccionPedido.Completar))">
+                                Completar
+                            </button>
+
+                            <button type="button"
+                                    class="btn btn-outline-warning"
+                                    disabled="@(!Connectivity.IsOnline || procesando)"
+                                    @onclick="@(() => SolicitarAccion(AccionPedido.Cancelar))">
+                                Cancelar pedido
+                            </button>
+
+                            <button type="button"
+                                    class="btn btn-outline-danger"
+                                    disabled="@(!Connectivity.IsOnline || procesando)"
+                                    @onclick="@(() => SolicitarAccion(AccionPedido.Eliminar))">
+                                Eliminar
+                            </button>
+
+                        </div>
+                    }
+
+                </div>
+
+                @if (pedido.EsPendiente && !Connectivity.IsOnline)
+                {
+                    <div class="small text-secondary mt-3">
+                        Sin conexión: las acciones sobre el pedido se habilitarán al reconectar.
+                    </div>
+                }
+
+            </div>
+        </div>
+
+        <DataTable TItem="DetallePedidoDto"
+                   Items="@pedido.Detalles"
+                   ColumnCount="7"
+                   EmptyMessage="El pedido no tiene productos.">
+
+            <Header>
+                <th>Producto</th>
+                <th class="text-end">Cantidad</th>
+                <th class="text-end">Precio</th>
+                <th class="text-end">Descuento</th>
+                <th class="text-end">Subtotal</th>
+                <th class="text-end">IVA</th>
+                <th class="text-end">Total</th>
+            </Header>
+
+            <RowTemplate Context="detalle">
+
+                <td>
+                    <div class="fw-semibold">@detalle.ProductoNombre</div>
+                    <div class="small text-secondary">@detalle.ProductoCodigo</div>
+                </td>
+
+                <td class="text-end">@detalle.Cantidad</td>
+                <td class="text-end">@detalle.PrecioUnitario.ToString("N2")</td>
+                <td class="text-end">@detalle.Descuento.ToString("N2")</td>
+                <td class="text-end">@detalle.SubtotalLinea.ToString("N2")</td>
+                <td class="text-end">@detalle.IVA.ToString("N2")</td>
+                <td class="text-end fw-semibold">@detalle.TotalLinea.ToString("N2")</td>
+
+            </RowTemplate>
+
+        </DataTable>
+
+        <div class="row justify-content-end mt-3">
+            <div class="col-sm-8 col-md-5 col-lg-4">
+
+                <dl class="row mb-0">
+                    <dt class="col-6 fw-normal text-secondary">Subtotal</dt>
+                    <dd class="col-6 text-end mb-1">@pedido.SubTotal.ToString("N2")</dd>
+
+                    <dt class="col-6 fw-normal text-secondary">Descuento</dt>
+                    <dd class="col-6 text-end mb-1">@pedido.Descuento.ToString("N2")</dd>
+
+                    <dt class="col-6 fw-normal text-secondary">IVA</dt>
+                    <dd class="col-6 text-end mb-1">@pedido.IVA.ToString("N2")</dd>
+
+                    <dt class="col-6">Total</dt>
+                    <dd class="col-6 text-end fw-bold h5 mb-0">@pedido.Total.ToString("N2")</dd>
+                </dl>
+
+            </div>
+        </div>
+    }
+
+</div>
+
+<ConfirmDialog Visible="@(accionPendiente is not null)"
+               Title="@TituloAccion"
+               Message="@MensajeAccion"
+               ConfirmText="@TextoConfirmar"
+               ConfirmVariant="@VarianteAccion"
+               IsProcessing="@procesando"
+               OnConfirm="EjecutarAccionAsync"
+               OnCancel="CancelarAccion" />
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private enum AccionPedido
+    {
+        Completar,
+        Cancelar,
+        Eliminar
+    }
+
+    private PedidoDto? pedido;
+
+    private bool isLoading = true;
+    private bool notFound;
+    private bool procesando;
+
+    private string? errorMessage;
+    private string? successMessage;
+
+    private AccionPedido? accionPendiente;
+
+    private string TituloAccion => accionPendiente switch
+    {
+        AccionPedido.Completar => "Completar pedido",
+        AccionPedido.Cancelar => "Cancelar pedido",
+        AccionPedido.Eliminar => "Eliminar pedido",
+        _ => string.Empty
+    };
+
+    private string MensajeAccion => accionPendiente switch
+    {
+        AccionPedido.Completar =>
+            $"¿Marcar el pedido #{Id} como completado? Después ya no podrá modificarse.",
+        AccionPedido.Cancelar =>
+            $"¿Cancelar el pedido #{Id}? Después ya no podrá modificarse.",
+        AccionPedido.Eliminar =>
+            $"¿Eliminar el pedido #{Id} y todos sus detalles? Esta acción no se puede deshacer.",
+        _ => string.Empty
+    };
+
+    private string TextoConfirmar => accionPendiente switch
+    {
+        AccionPedido.Completar => "Completar",
+        AccionPedido.Cancelar => "Cancelar pedido",
+        AccionPedido.Eliminar => "Eliminar",
+        _ => "Confirmar"
+    };
+
+    private string VarianteAccion => accionPendiente switch
+    {
+        AccionPedido.Completar => "success",
+        AccionPedido.Cancelar => "warning",
+        _ => "danger"
+    };
+
+    // OnParametersSet: permite navegar de /pedidos/1 a /pedidos/2 sin recrear la página.
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarPedidoAsync();
+    }
+
+    private async Task CargarPedidoAsync()
+    {
+        try
+        {
+            isLoading = pedido is null || pedido.PedidoId != Id;
+            notFound = false;
+
+            pedido = await PedidoService.ObtenerPorIdAsync(Id);
+
+            notFound = pedido is null;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"No fue posible cargar el pedido. {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void Editar()
+    {
+        Navigation.NavigateTo($"/pedidos/editar/{Id}");
+    }
+
+    private void SolicitarAccion(AccionPedido accion)
+    {
+        errorMessage = null;
+        successMessage = null;
+        accionPendiente = accion;
+    }
+
+    private void CancelarAccion()
+    {
+        if (procesando)
+        {
+            return;
+        }
+
+        accionPendiente = null;
+    }
+
+    /*
+     * Cada acción llama a su endpoint, que ejecuta el procedimiento
+     * almacenado correspondiente (CompletarPedido, CancelarPedido,
+     * EliminarPedido). Si el procedimiento rechaza la operación, el
+     * mensaje llega en ApiException y se muestra al usuario.
+     */
+    private async Task EjecutarAccionAsync()
+    {
+        if (accionPendiente is not { } accion)
+        {
+            return;
+        }
+
+        try
+        {
+            procesando = true;
+            errorMessage = null;
+
+            switch (accion)
+            {
+                case AccionPedido.Completar:
+                    await PedidoService.CompletarAsync(Id);
+                    successMessage = "El pedido fue completado.";
+                    break;
+
+                case AccionPedido.Cancelar:
+                    await PedidoService.CancelarAsync(Id);
+                    successMessage = "El pedido fue cancelado.";
+                    break;
+
+                case AccionPedido.Eliminar:
+                    await PedidoService.EliminarAsync(Id);
+                    accionPendiente = null;
+                    Navigation.NavigateTo("/pedidos");
+                    return;
+            }
+
+            accionPendiente = null;
+
+            await CargarPedidoAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            accionPendiente = null;
+            errorMessage = ex.Message;
+
+            // El estado pudo cambiar en el servidor (otro usuario): se refresca.
+            await CargarPedidoAsync();
+        }
+        finally
+        {
+            procesando = false;
+        }
+    }
+}

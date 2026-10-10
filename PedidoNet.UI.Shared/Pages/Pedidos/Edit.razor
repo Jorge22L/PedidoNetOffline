@@ -1,0 +1,216 @@
+﻿@page "/pedidos/editar/{Id:int}"
+@attribute [Authorize]
+
+@using PedidoNet.UI.Shared.Clientes
+@using PedidoNet.UI.Shared.Components.Pedidos
+@using PedidoNet.UI.Shared.Models.Clientes
+@using PedidoNet.UI.Shared.Models.Pedidos
+@using PedidoNet.UI.Shared.Offline
+@using PedidoNet.UI.Shared.Pedidos
+@using PedidoNet.UI.Shared.Productos
+
+@inject IPedidoService PedidoService
+@inject IClienteService ClienteService
+@inject IProductoService ProductoService
+@inject IConnectivityService Connectivity
+@inject NavigationManager Navigation
+
+<PageTitle>Editar pedido #@Id</PageTitle>
+
+<div class="container-fluid py-4">
+
+    <PageHeader Title="@($"Editar pedido #{Id}")"
+                Description="Modifica el cliente, la forma de pago o los productos del pedido.">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="@($"pedidos/{Id}")">&larr; Volver al pedido</a>
+        </Actions>
+    </PageHeader>
+
+    @if (isLoading)
+    {
+        <LoadingIndicator Message="Cargando pedido..." />
+    }
+    else if (notFound)
+    {
+        <AlertMessage Variant="warning"
+                      Message="El pedido no existe."
+                      Dismissible="false" />
+    }
+    else if (noEditable)
+    {
+        <AlertMessage Variant="warning"
+                      Message="@($"El pedido está {estadoActual?.ToLowerInvariant()} y ya no puede modificarse. Solo se editan pedidos pendientes.")"
+                      Dismissible="false" />
+    }
+    else
+    {
+        @if (!Connectivity.IsOnline)
+        {
+            <AlertMessage Variant="warning"
+                          Message="Necesitas conexión para guardar los cambios del pedido."
+                          Dismissible="false" />
+        }
+
+        <AlertMessage Message="@errorMessage"
+                      Dismissible="false" />
+
+        @if (cargado)
+        {
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+
+                    <PedidoForm Model="@model"
+                                Clientes="@clientes"
+                                Productos="@productos"
+                                SubmitText="Guardar cambios"
+                                IsSaving="@isSaving"
+                                Disabled="@(!Connectivity.IsOnline)"
+                                OnValidSubmit="GuardarAsync"
+                                Cancel="Cancelar" />
+
+                </div>
+            </div>
+        }
+    }
+
+</div>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private PedidoFormModel model = new();
+
+    private List<ClienteDto> clientes = [];
+    private List<ProductosDto> productos = [];
+
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool notFound;
+    private bool noEditable;
+    private bool cargado;
+
+    private string? estadoActual;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var pedido = await PedidoService.ObtenerPorIdAsync(Id);
+
+            if (pedido is null)
+            {
+                notFound = true;
+                return;
+            }
+
+            if (!pedido.EsPendiente)
+            {
+                estadoActual = pedido.Estado;
+                noEditable = true;
+                return;
+            }
+
+            clientes = await ClienteService.ObtenerTodosAsync();
+
+            productos = await ProductoService.ObtenerTodosAsync();
+
+            model = CrearModelo(pedido);
+            cargado = true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"No fue posible cargar el pedido. {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    /*
+     * Convierte el pedido guardado en el modelo del formulario.
+     *
+     * - Precio: se usa el precio vigente del catálogo (el que aplicará el
+     *   procedimiento al recalcular); si el producto ya no está en el
+     *   catálogo local se conserva el precio registrado en el pedido.
+     * - Existencias: las del catálogo más la cantidad que ya reservó este
+     *   pedido, porque las existencias actuales ya tienen descontado lo
+     *   que este pedido reservó al crearse. Es solo informativo: quien
+     *   valida el inventario es dbo.ActualizarPedido.
+     */
+    private PedidoFormModel CrearModelo(PedidoDto pedido)
+    {
+        return new PedidoFormModel
+        {
+            ClienteId = pedido.ClienteId,
+            FormaPago = pedido.FormaPago,
+            Detalles = pedido.Detalles
+                .Select(detalle =>
+                {
+                    var producto = productos.FirstOrDefault(p => p.ProductoId == detalle.ProductoId);
+
+                    return new DetallePedidoFormModel
+                    {
+                        ProductoId = detalle.ProductoId,
+                        ProductoCodigo = detalle.ProductoCodigo,
+                        ProductoNombre = detalle.ProductoNombre,
+                        PrecioUnitario = producto?.PrecioVenta ?? detalle.PrecioUnitario,
+                        TieneIVA = producto?.TieneIVA ?? detalle.TieneIVA,
+                        Existencias = producto is null ? null : producto.Existencias + detalle.Cantidad,
+                        Cantidad = detalle.Cantidad,
+                        Descuento = detalle.Descuento
+                    };
+                })
+                .ToList()
+        };
+    }
+
+    /*
+     * PUT /api/v1/Pedidos/{id} → dbo.ActualizarPedido.
+     * Se envían cliente, forma de pago y TODAS las líneas (también las que
+     * no cambiaron); el procedimiento valida existencias y recalcula totales.
+     */
+    private async Task GuardarAsync()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            await PedidoService.ActualizarAsync(Id, model.ToActualizarRequest());
+
+            Navigation.NavigateTo($"/pedidos/{Id}");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"No fue posible guardar el pedido. {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo($"/pedidos/{Id}");
+    }
+}

@@ -2,9 +2,11 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using PedidoNet.UI.Shared.Auth;
+using PedidoNet.UI.Shared.Clientes;
 using PedidoNet.UI.Shared.Device;
 using PedidoNet.UI.Shared.Offline;
 using PedidoNet.UI.Shared.Offline.Productos;
+using PedidoNet.UI.Shared.Pedidos;
 using PedidoNet.UI.Shared.Productos;
 using PedidoNet.Web;
 using PedidoNet.Web.Models.Auth;
@@ -104,6 +106,30 @@ builder.Services.AddScoped<ProductoSyncService>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
 builder.Services.AddSingleton<IDevicePermissionService, UnsupportedDevicePermissionService>();
 builder.Services.AddSingleton<ICameraService, UnsupportedCameraService>();
+
+// La lectura de códigos de barras es solo para la app móvil.
+builder.Services.AddSingleton<IBarcodeScannerService, UnsupportedBarcodeScannerService>();
+
+// =========================================================
+// CLIENTES Y PEDIDOS (en línea: la API usa procedimientos almacenados)
+// =========================================================
+
+builder.Services.AddScoped<ClientesApiClient>(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+
+    return new ClientesApiClient(httpClientFactory.CreateClient("PedidoNetAuthenticatedApi"));
+});
+
+builder.Services.AddScoped<PedidosApiClient>(sp =>
+{
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+
+    return new PedidosApiClient(httpClientFactory.CreateClient("PedidoNetAuthenticatedApi"));
+});
+
+builder.Services.AddScoped<IClienteService, ClienteService>();
+builder.Services.AddScoped<IPedidoService, PedidoService>();
 
 
 await builder.Build().RunAsync();

@@ -41,7 +41,19 @@
 </div>
 
 @code {
+    /// <summary>Código precargado (p. ej. al escanear un código que no existe).</summary>
+    [SupplyParameterFromQuery(Name = "codigo")]
+    public string? CodigoInicial { get; set; }
+
     private ProductoFormModel model = new();
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrWhiteSpace(CodigoInicial))
+        {
+            model.Codigo = CodigoInicial;
+        }
+    }
 
     private bool isSaving;
     private string? errorMessage;

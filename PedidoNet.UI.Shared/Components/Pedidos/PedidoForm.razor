@@ -1,0 +1,487 @@
+﻿@using PedidoNet.UI.Shared.Models.Clientes
+@using PedidoNet.UI.Shared.Models.Pedidos
+@using PedidoNet.UI.Shared.Models.Productos
+
+@inject IBarcodeScannerService Scanner
+
+@*
+    Formulario de pedido (crear y editar).
+    Los totales son una vista previa: el cálculo definitivo, la validación
+    de existencias y el descuento de inventario los hace el procedimiento
+    almacenado de la API.
+*@
+
+<EditForm Model="@Model"
+          OnValidSubmit="HandleValidSubmit">
+
+    <DataAnnotationsValidator />
+
+    <div class="row">
+
+        <div class="col-md-8">
+            <FormField Label="Cliente">
+
+                <InputSelect class="form-select"
+                             TValue="int"
+                             @bind-Value="Model.ClienteId">
+
+                    <option value="0">Selecciona un cliente...</option>
+
+                    @foreach (var cliente in Clientes)
+                    {
+                        <option value="@cliente.ClienteId">
+                            @TextoCliente(cliente)
+                        </option>
+                    }
+
+                </InputSelect>
+
+                <ValidationMessage For="@(() => Model.ClienteId)" />
+
+            </FormField>
+        </div>
+
+        <div class="col-md-4">
+            <FormField Label="Forma de pago">
+
+                <InputSelect class="form-select"
+                             @bind-Value="Model.FormaPago">
+
+                    @foreach (var forma in FormasPago.Todas)
+                    {
+                        <option value="@forma">@forma</option>
+                    }
+
+                </InputSelect>
+
+                <ValidationMessage For="@(() => Model.FormaPago)" />
+
+            </FormField>
+        </div>
+
+    </div>
+
+    @* ===================== AGREGAR PRODUCTO ===================== *@
+
+    <div class="border rounded-3 p-3 mb-3 bg-light">
+
+        <div class="fw-semibold mb-2">Agregar producto</div>
+
+        <div class="row g-2 align-items-end">
+
+            <div class="col-12 col-lg-6">
+                <label class="form-label small mb-1">Producto</label>
+
+                <div class="input-group">
+                    <select class="form-select"
+                            @bind="productoSeleccionadoId">
+
+                        <option value="0">Selecciona un producto...</option>
+
+                        @foreach (var producto in ProductosDisponibles)
+                        {
+                            <option value="@producto.ProductoId"
+                                    disabled="@(producto.Existencias <= 0)">
+                                @TextoProducto(producto)
+                            </option>
+                        }
+
+                    </select>
+
+                    @* Solo en la app móvil (en Web IsSupported = false) *@
+                    @if (Scanner.IsSupported)
+                    {
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                disabled="@escaneando"
+                                @onclick="EscanearProductoAsync">
+                            @(escaneando ? "Escaneando..." : "Escanear")
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="col-6 col-lg-2">
+                <label class="form-label small mb-1">Cantidad</label>
+
+                <input type="number"
+                       class="form-control"
+                       min="1"
+                       step="1"
+                       @bind="cantidadNueva" />
+            </div>
+
+            <div class="col-6 col-lg-2">
+                <label class="form-label small mb-1">Descuento</label>
+
+                <input type="number"
+                       class="form-control"
+                       min="0"
+                       step="0.01"
+                       @bind="descuentoNuevo" />
+            </div>
+
+            <div class="col-12 col-lg-2 d-grid">
+                <button type="button"
+                        class="btn btn-outline-primary"
+                        @onclick="AgregarLinea">
+                    Agregar
+                </button>
+            </div>
+
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(errorLinea))
+        {
+            <div class="text-danger small mt-2">@errorLinea</div>
+        }
+
+    </div>
+
+    @* ===================== LÍNEAS DEL PEDIDO ===================== *@
+
+    <div class="table-responsive mb-3">
+        <table class="table align-middle mb-0">
+
+            <thead class="table-light">
+                <tr>
+                    <th>Producto</th>
+                    <th class="text-end">Precio</th>
+                    <th style="width: 7rem;">Cantidad</th>
+                    <th style="width: 8rem;">Descuento</th>
+                    <th class="text-end">Subtotal</th>
+                    <th class="text-end">IVA</th>
+                    <th class="text-end">Total</th>
+                    <th></th>
+                </tr>
+            </thead>
+
+            <tbody>
+                @if (Model.Detalles.Count == 0)
+                {
+                    <tr>
+                        <td colspan="8" class="text-center text-secondary py-4">
+                            Aún no has agregado productos.
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var linea in Model.Detalles)
+                    {
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@linea.ProductoNombre</div>
+
+                                <div class="small text-secondary">
+                                    @linea.ProductoCodigo
+                                    @if (linea.TieneIVA)
+                                    {
+                                        <span class="ms-1">· IVA</span>
+                                    }
+                                </div>
+
+                                @if (linea.Existencias.HasValue && linea.Cantidad > linea.Existencias.Value)
+                                {
+                                    <div class="small text-warning">
+                                        Supera las existencias disponibles (@linea.Existencias).
+                                    </div>
+                                }
+                            </td>
+
+                            <td class="text-end">@linea.PrecioUnitario.ToString("N2")</td>
+
+                            <td>
+                                <input type="number"
+                                       class="form-control form-control-sm"
+                                       min="1"
+                                       step="1"
+                                       @bind="linea.Cantidad" />
+                            </td>
+
+                            <td>
+                                <input type="number"
+                                       class="form-control form-control-sm"
+                                       min="0"
+                                       step="0.01"
+                                       @bind="linea.Descuento" />
+                            </td>
+
+                            <td class="text-end">@linea.SubtotalLinea.ToString("N2")</td>
+                            <td class="text-end">@linea.IVA.ToString("N2")</td>
+                            <td class="text-end fw-semibold">@linea.TotalLinea.ToString("N2")</td>
+
+                            <td class="text-end">
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger"
+                                        aria-label="Quitar producto"
+                                        @onclick="@(() => QuitarLinea(linea))">
+                                    Quitar
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+
+        </table>
+    </div>
+
+    @* ===================== TOTALES ===================== *@
+
+    <div class="row justify-content-end mb-3">
+        <div class="col-sm-8 col-md-5 col-lg-4">
+
+            <dl class="row mb-0">
+                <dt class="col-6 fw-normal text-secondary">Subtotal</dt>
+                <dd class="col-6 text-end mb-1">@Model.SubTotal.ToString("N2")</dd>
+
+                <dt class="col-6 fw-normal text-secondary">IVA (@((ImpuestosPedido.TasaIva * 100).ToString("0"))%)</dt>
+                <dd class="col-6 text-end mb-1">@Model.IVA.ToString("N2")</dd>
+
+                <dt class="col-6">Total</dt>
+                <dd class="col-6 text-end fw-bold mb-0">@Model.Total.ToString("N2")</dd>
+            </dl>
+
+            <div class="form-text text-end">
+                Vista previa. El total definitivo lo calcula el servidor.
+            </div>
+
+        </div>
+    </div>
+
+    @if (erroresDetalle.Count > 0)
+    {
+        <div class="alert alert-danger" role="alert">
+            <ul class="mb-0 ps-3">
+                @foreach (var error in erroresDetalle)
+                {
+                    <li>@error</li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="d-flex justify-content-end gap-2">
+
+        @if (Cancel.HasDelegate)
+        {
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    @onclick="HandleCancel">
+                Cancelar
+            </button>
+        }
+
+        <LoadingButton Type="submit"
+                       isLoading="@IsSaving"
+                       Disabled="@Disabled"
+                       LoadingText="Guardando...">
+
+            @SubmitText
+
+        </LoadingButton>
+
+    </div>
+
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired]
+    public PedidoFormModel Model { get; set; } = new();
+
+    [Parameter]
+    public IReadOnlyList<ClienteDto> Clientes { get; set; } = [];
+
+    /// <summary>
+    /// Catálogo de productos. Solo se pueden agregar los que ya existen
+    /// en el servidor (ProductoId), los pendientes de sincronizar no.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<ProductosDto> Productos { get; set; } = [];
+
+    [Parameter]
+    public string SubmitText { get; set; } = "Guardar";
+
+    [Parameter]
+    public bool IsSaving { get; set; }
+
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    [Parameter]
+    public EventCallback<PedidoFormModel> OnValidSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback Cancel { get; set; }
+
+    private int productoSeleccionadoId;
+    private int cantidadNueva = 1;
+    private decimal descuentoNuevo;
+
+    private string? errorLinea;
+    private List<string> erroresDetalle = [];
+
+    private bool escaneando;
+
+    private IEnumerable<ProductosDto> ProductosDisponibles =>
+        Productos
+            .Where(p => p.ProductoId.HasValue)
+            .Where(p => Model.Detalles.All(d => d.ProductoId != p.ProductoId))
+            .OrderBy(p => p.Nombre);
+
+    private static string TextoCliente(ClienteDto cliente)
+    {
+        return string.IsNullOrWhiteSpace(cliente.Cedula)
+            ? cliente.Nombre
+            : $"{cliente.Nombre} ({cliente.Cedula})";
+    }
+
+    private static string TextoProducto(ProductosDto producto)
+    {
+        var codigo = string.IsNullOrWhiteSpace(producto.Codigo)
+            ? string.Empty
+            : $"{producto.Codigo} - ";
+
+        var existencias = producto.Existencias <= 0
+            ? "sin existencias"
+            : $"exist. {producto.Existencias}";
+
+        return $"{codigo}{producto.Nombre} · {producto.PrecioVenta:N2} ({existencias})";
+    }
+
+    private void AgregarLinea()
+    {
+        errorLinea = null;
+
+        var producto = Productos.FirstOrDefault(p =>
+            p.ProductoId.HasValue && p.ProductoId.Value == productoSeleccionadoId);
+
+        if (producto is null)
+        {
+            errorLinea = "Selecciona un producto.";
+            return;
+        }
+
+        AgregarProducto(producto, cantidadNueva, descuentoNuevo);
+    }
+
+    private void AgregarProducto(ProductosDto producto, int cantidad, decimal descuento)
+    {
+        errorLinea = null;
+
+        if (Model.Detalles.Any(d => d.ProductoId == producto.ProductoId))
+        {
+            errorLinea = $"{producto.Nombre} ya está en el pedido. Modifica la cantidad en la línea.";
+            return;
+        }
+
+        if (cantidad <= 0)
+        {
+            errorLinea = "La cantidad debe ser mayor que cero.";
+            return;
+        }
+
+        if (descuento < 0)
+        {
+            errorLinea = "El descuento no puede ser negativo.";
+            return;
+        }
+
+        if (descuento > cantidad * producto.PrecioVenta)
+        {
+            errorLinea = "El descuento no puede ser mayor que el importe de la línea.";
+            return;
+        }
+
+        Model.Detalles.Add(new DetallePedidoFormModel
+        {
+            ProductoId = producto.ProductoId!.Value,
+            ProductoCodigo = producto.Codigo,
+            ProductoNombre = producto.Nombre,
+            PrecioUnitario = producto.PrecioVenta,
+            TieneIVA = producto.TieneIVA == true,
+            Existencias = producto.Existencias,
+            Cantidad = cantidad,
+            Descuento = descuento
+        });
+
+        productoSeleccionadoId = 0;
+        cantidadNueva = 1;
+        descuentoNuevo = 0;
+        erroresDetalle = [];
+    }
+
+    private void QuitarLinea(DetallePedidoFormModel linea)
+    {
+        Model.Detalles.Remove(linea);
+        erroresDetalle = [];
+    }
+
+    /*
+     * Escanea el código de barras y agrega el producto con cantidad 1.
+     * Si ya estaba en el pedido, incrementa su cantidad.
+     */
+    private async Task EscanearProductoAsync()
+    {
+        try
+        {
+            escaneando = true;
+            errorLinea = null;
+
+            var resultado = await Scanner.ScanAsync(BarcodeScanKind.CodigoBarras);
+
+            if (resultado is null)
+                return; // cancelado
+
+            var producto = Productos.FirstOrDefault(p =>
+                p.ProductoId.HasValue &&
+                string.Equals(p.Codigo?.Trim(), resultado.Value, StringComparison.OrdinalIgnoreCase));
+
+            if (producto is null)
+            {
+                errorLinea = $"No hay ningún producto sincronizado con el código {resultado.Value}.";
+                return;
+            }
+
+            var existente = Model.Detalles.FirstOrDefault(d => d.ProductoId == producto.ProductoId);
+
+            if (existente is not null)
+            {
+                existente.Cantidad++;
+                return;
+            }
+
+            AgregarProducto(producto, 1, 0);
+        }
+        catch (DeviceFeatureException ex)
+        {
+            errorLinea = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorLinea = $"No fue posible leer el código. {ex.Message}";
+        }
+        finally
+        {
+            escaneando = false;
+        }
+    }
+
+    private Task HandleValidSubmit()
+    {
+        erroresDetalle = Model.ValidarDetalles();
+
+        if (erroresDetalle.Count > 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        return OnValidSubmit.InvokeAsync(Model);
+    }
+
+    private Task HandleCancel()
+    {
+        return Cancel.InvokeAsync();
+    }
+}

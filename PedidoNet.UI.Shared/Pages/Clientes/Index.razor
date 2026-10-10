@@ -1,0 +1,368 @@
+﻿@page "/clientes"
+@attribute [Authorize]
+@implements IDisposable
+
+@using PedidoNet.UI.Shared.Clientes
+@using PedidoNet.UI.Shared.Models.Clientes
+@using PedidoNet.UI.Shared.Offline
+@using PedidoNet.UI.Shared.Pedidos
+
+@inject IClienteService ClienteService
+@inject IPedidoService PedidoService
+@inject IConnectivityService Connectivity
+@inject NavigationManager Navigation
+
+<PageTitle>Clientes - PedidoNet</PageTitle>
+
+<div class="container-fluid px-3 px-md-4 py-4">
+
+    <PageHeader Title="Clientes"
+                Description="Administra los clientes que realizan pedidos.">
+
+        <Actions>
+            <button type="button"
+                    class="btn btn-primary px-3"
+                    disabled="@(!Connectivity.IsOnline)"
+                    @onclick="NuevoCliente">
+                Nuevo cliente
+            </button>
+        </Actions>
+
+    </PageHeader>
+
+    @if (!Connectivity.IsOnline)
+    {
+        <div class="offline-banner mb-4">
+            <div>
+                <div class="fw-bold">
+                    Estás trabajando sin conexión.
+                </div>
+
+                <div class="small">
+                    Los clientes se administran en línea. La lista se actualizará cuando vuelva la conexión.
+                </div>
+            </div>
+        </div>
+    }
+
+    <AlertMessage Variant="success"
+                  Message="@successMessage"
+                  Dismissible="false" />
+
+    @if (isLoading)
+    {
+        <LoadingIndicator Message="Cargando clientes..." />
+    }
+    else
+    {
+        <AlertMessage Message="@errorMessage"
+                      Dismissible="false" />
+
+        <div class="mb-3">
+            <input type="search"
+                   class="form-control"
+                   placeholder="Buscar por nombre, cédula o teléfono..."
+                   aria-label="Buscar clientes"
+                   @bind="filtro"
+                   @bind:event="oninput" />
+        </div>
+
+        <DataTable TItem="ClienteDto"
+                   Items="@ClientesFiltrados"
+                   ColumnCount="6"
+                   EmptyMessage="@(string.IsNullOrWhiteSpace(filtro) ? "No hay clientes registrados." : "Ningún cliente coincide con la búsqueda.")">
+
+            <Header>
+                <th>Nombre</th>
+                <th>Cédula</th>
+                <th>Teléfono</th>
+                <th>Dirección</th>
+                <th>Tipo</th>
+                <th class="text-end">Acciones</th>
+            </Header>
+
+            <RowTemplate Context="cliente">
+
+                <td class="fw-semibold">@cliente.Nombre</td>
+
+                <td>@cliente.Cedula</td>
+
+                <td>@cliente.Telefono</td>
+
+                <td class="text-truncate" style="max-width: 16rem;" title="@cliente.Direccion">
+                    @cliente.Direccion
+                </td>
+
+                <td>
+                    @if (cliente.EsConsumidorFinal)
+                    {
+                        <span class="badge text-bg-light border">Consumidor final</span>
+                    }
+                    else
+                    {
+                        <span class="badge text-bg-info">Contribuyente</span>
+                    }
+                </td>
+
+                <td class="text-end text-nowrap">
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary me-2"
+                            @onclick="@(() => VerPedidos(cliente))">
+                        Pedidos
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-primary me-2"
+                            disabled="@(!Connectivity.IsOnline)"
+                            @onclick="@(() => OnEditar(cliente))">
+                        Editar
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-danger"
+                            disabled="@(!Connectivity.IsOnline)"
+                            @onclick="@(() => SolicitarEliminacionAsync(cliente))">
+                        Eliminar
+                    </button>
+
+                </td>
+
+            </RowTemplate>
+
+        </DataTable>
+    }
+
+</div>
+
+<ConfirmDialog Visible="@(clienteAEliminar is not null)"
+               Title="Eliminar cliente"
+               ConfirmText="Eliminar"
+               ProcessingText="Eliminando..."
+               IsProcessing="@eliminando"
+               OnConfirm="EliminarAsync"
+               OnCancel="CancelarEliminacion">
+
+    <p>
+        ¿Deseas eliminar al cliente <strong>@(clienteAEliminar?.Nombre)</strong>?
+        Esta acción no se puede deshacer.
+    </p>
+
+    @if (contandoPedidos)
+    {
+        <div class="small text-secondary">Verificando pedidos del cliente...</div>
+    }
+    else if (pedidosDelCliente > 0)
+    {
+        @* La FK Pedido → Cliente tiene borrado en cascada en la base de datos. *@
+        <div class="alert alert-warning mb-0">
+            El cliente tiene <strong>@pedidosDelCliente</strong> pedido(s).
+            También se eliminarán junto con sus detalles.
+        </div>
+    }
+
+</ConfirmDialog>
+
+@code {
+
+    private readonly SemaphoreSlim _loadLock =
+        new(1, 1);
+
+    private List<ClienteDto> clientes = [];
+
+    private bool isLoading = true;
+
+    private string? errorMessage;
+    private string? successMessage;
+
+    private string filtro = string.Empty;
+
+    private ClienteDto? clienteAEliminar;
+    private int pedidosDelCliente;
+    private bool contandoPedidos;
+    private bool eliminando;
+
+    private IEnumerable<ClienteDto> ClientesFiltrados
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(filtro))
+            {
+                return clientes;
+            }
+
+            var texto = filtro.Trim();
+
+            return clientes.Where(c =>
+                c.Nombre.Contains(texto, StringComparison.OrdinalIgnoreCase) ||
+                (c.Cedula?.Contains(texto, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (c.Telefono?.Contains(texto, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Connectivity.ConnectivityChanged +=
+            OnConnectivityChanged;
+
+        await CargarClientesAsync();
+    }
+
+    private async Task CargarClientesAsync()
+    {
+        await _loadLock.WaitAsync();
+
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            clientes =
+                await ClienteService.ObtenerTodosAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException e)
+        {
+            errorMessage =
+                $"No fue posible consultar los clientes: {e.Message}";
+        }
+        catch (Exception e)
+        {
+            errorMessage =
+                $"Error inesperado: {e.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+
+            _loadLock.Release();
+        }
+    }
+
+    private void NuevoCliente()
+    {
+        Navigation.NavigateTo("/clientes/crear");
+    }
+
+    private void OnEditar(ClienteDto cliente)
+    {
+        Navigation.NavigateTo(
+            $"/clientes/editar/{cliente.ClienteId}");
+    }
+
+    private void VerPedidos(ClienteDto cliente)
+    {
+        Navigation.NavigateTo(
+            $"/pedidos?clienteId={cliente.ClienteId}");
+    }
+
+    /*
+     * Antes de confirmar se consultan los pedidos del cliente para
+     * advertir el borrado en cascada. Si la consulta falla, el diálogo
+     * se muestra igual (la advertencia es informativa).
+     */
+    private async Task SolicitarEliminacionAsync(ClienteDto cliente)
+    {
+        clienteAEliminar = cliente;
+        pedidosDelCliente = 0;
+        successMessage = null;
+        errorMessage = null;
+
+        try
+        {
+            contandoPedidos = true;
+
+            var pedidos =
+                await PedidoService.ObtenerPorClienteAsync(cliente.ClienteId);
+
+            pedidosDelCliente = pedidos.Count;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (Exception)
+        {
+            pedidosDelCliente = 0;
+        }
+        finally
+        {
+            contandoPedidos = false;
+        }
+    }
+
+    private void CancelarEliminacion()
+    {
+        if (eliminando)
+        {
+            return;
+        }
+
+        clienteAEliminar = null;
+    }
+
+    private async Task EliminarAsync()
+    {
+        if (clienteAEliminar is null)
+        {
+            return;
+        }
+
+        var cliente = clienteAEliminar;
+
+        try
+        {
+            eliminando = true;
+            errorMessage = null;
+
+            await ClienteService.EliminarAsync(cliente.ClienteId);
+
+            successMessage = $"El cliente {cliente.Nombre} fue eliminado.";
+
+            clienteAEliminar = null;
+
+            await CargarClientesAsync();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException e)
+        {
+            clienteAEliminar = null;
+
+            errorMessage =
+                $"No fue posible eliminar el cliente: {e.Message}";
+        }
+        finally
+        {
+            eliminando = false;
+        }
+    }
+
+    private void OnConnectivityChanged()
+    {
+        _ = InvokeAsync(RecargarAlReconectarAsync);
+    }
+
+    private async Task RecargarAlReconectarAsync()
+    {
+        if (Connectivity.IsOnline)
+        {
+            await CargarClientesAsync();
+        }
+
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Connectivity.ConnectivityChanged -=
+            OnConnectivityChanged;
+
+        _loadLock.Dispose();
+    }
+}

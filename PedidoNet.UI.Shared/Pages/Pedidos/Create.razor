@@ -1,0 +1,156 @@
+﻿@page "/pedidos/crear"
+@attribute [Authorize]
+
+@using PedidoNet.UI.Shared.Clientes
+@using PedidoNet.UI.Shared.Components.Pedidos
+@using PedidoNet.UI.Shared.Models.Clientes
+@using PedidoNet.UI.Shared.Models.Pedidos
+@using PedidoNet.UI.Shared.Offline
+@using PedidoNet.UI.Shared.Pedidos
+@using PedidoNet.UI.Shared.Productos
+
+@inject IPedidoService PedidoService
+@inject IClienteService ClienteService
+@inject IProductoService ProductoService
+@inject IConnectivityService Connectivity
+@inject NavigationManager Navigation
+
+<PageTitle>Nuevo pedido</PageTitle>
+
+<div class="container-fluid py-4">
+
+    <PageHeader Title="Nuevo pedido"
+                Description="Selecciona el cliente y agrega los productos.">
+        <Actions>
+            <a class="btn btn-outline-secondary" href="pedidos">&larr; Volver a pedidos</a>
+        </Actions>
+    </PageHeader>
+
+    @if (isLoading)
+    {
+        <LoadingIndicator Message="Cargando clientes y productos..." />
+    }
+    else
+    {
+        @if (!Connectivity.IsOnline)
+        {
+            <AlertMessage Variant="warning"
+                          Message="Necesitas conexión para registrar pedidos: el servidor valida y descuenta las existencias."
+                          Dismissible="false" />
+        }
+
+        @if (clientes.Count == 0 && errorMessage is null)
+        {
+            <div class="alert alert-info">
+                No hay clientes registrados.
+                <a href="clientes/crear" class="alert-link">Registra un cliente</a> antes de crear pedidos.
+            </div>
+        }
+
+        <AlertMessage Message="@errorMessage"
+                      Dismissible="false" />
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+
+                <PedidoForm Model="@model"
+                            Clientes="@clientes"
+                            Productos="@productos"
+                            SubmitText="Registrar pedido"
+                            IsSaving="@isSaving"
+                            Disabled="@(!Connectivity.IsOnline)"
+                            OnValidSubmit="GuardarAsync"
+                            Cancel="Cancelar" />
+
+            </div>
+        </div>
+    }
+
+</div>
+
+@code {
+    /// <summary>Cliente preseleccionado: /pedidos/crear?clienteId=5</summary>
+    [SupplyParameterFromQuery(Name = "clienteId")]
+    public int? ClienteId { get; set; }
+
+    private readonly PedidoFormModel model = new();
+
+    private List<ClienteDto> clientes = [];
+    private List<ProductosDto> productos = [];
+
+    private bool isLoading = true;
+    private bool isSaving;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            clientes = await ClienteService.ObtenerTodosAsync();
+
+            productos = await ProductoService.ObtenerTodosAsync();
+
+            if (ClienteId.HasValue && clientes.Any(c => c.ClienteId == ClienteId.Value))
+            {
+                model.ClienteId = ClienteId.Value;
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"No fue posible cargar los datos del pedido. {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    /*
+     * POST /api/v1/Pedidos → dbo.GuardarPedido.
+     * Si el procedimiento rechaza el pedido (existencias insuficientes,
+     * cliente o producto inexistente) la API responde 404/422 con el
+     * mensaje del procedimiento, que se muestra tal cual.
+     */
+    private async Task GuardarAsync()
+    {
+        try
+        {
+            isSaving = true;
+            errorMessage = null;
+
+            var pedidoId =
+                await PedidoService.CrearAsync(model.ToCrearRequest());
+
+            Navigation.NavigateTo($"/pedidos/{pedidoId}");
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"No fue posible registrar el pedido. {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void Cancelar()
+    {
+        Navigation.NavigateTo("/pedidos");
+    }
+}

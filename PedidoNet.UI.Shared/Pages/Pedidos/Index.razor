@@ -1,0 +1,356 @@
+﻿@page "/pedidos"
+@attribute [Authorize]
+@implements IDisposable
+
+@using PedidoNet.UI.Shared.Clientes
+@using PedidoNet.UI.Shared.Models.Pedidos
+@using PedidoNet.UI.Shared.Offline
+@using PedidoNet.UI.Shared.Pedidos
+
+@inject IPedidoService PedidoService
+@inject IClienteService ClienteService
+@inject IConnectivityService Connectivity
+@inject NavigationManager Navigation
+
+<PageTitle>Pedidos - PedidoNet</PageTitle>
+
+<div class="container-fluid px-3 px-md-4 py-4">
+
+    <PageHeader Title="Pedidos"
+                Description="@(ClienteId.HasValue ? $"Pedidos del cliente {nombreCliente}" : "Registra y da seguimiento a los pedidos.")">
+
+        <Actions>
+            <button type="button"
+                    class="btn btn-primary px-3"
+                    disabled="@(!Connectivity.IsOnline)"
+                    @onclick="NuevoPedido">
+                Nuevo pedido
+            </button>
+        </Actions>
+
+    </PageHeader>
+
+    @if (!Connectivity.IsOnline)
+    {
+        <div class="offline-banner mb-4">
+            <div>
+                <div class="fw-bold">
+                    Estás trabajando sin conexión.
+                </div>
+
+                <div class="small">
+                    Los pedidos requieren conexión porque el servidor valida y descuenta las existencias.
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (isLoading)
+    {
+        <LoadingIndicator Message="Cargando pedidos..." />
+    }
+    else
+    {
+        <AlertMessage Message="@errorMessage"
+                      Dismissible="false" />
+
+        @* Estadísticas generales (GET /api/v1/Pedidos/estadisticas) *@
+        @if (estadisticas is not null && !ClienteId.HasValue)
+        {
+            <div class="row g-3 mb-4">
+
+                <div class="col-6 col-lg-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="small text-secondary">Total de pedidos</div>
+                            <div class="h4 fw-bold mb-0">@estadisticas.TotalPedidos</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-lg-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="small text-secondary">Pendientes</div>
+                            <div class="h4 fw-bold mb-0 text-warning">@estadisticas.PedidosPendientes</div>
+                            <div class="small text-secondary">
+                                @estadisticas.PedidosCompletados completados · @estadisticas.PedidosCancelados cancelados
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-lg-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="small text-secondary">Ventas</div>
+                            <div class="h4 fw-bold mb-0">@estadisticas.MontoTotalVentas.ToString("N2")</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-6 col-lg-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <div class="small text-secondary">Promedio por pedido</div>
+                            <div class="h4 fw-bold mb-0">@estadisticas.PromedioVentaPorPedido.ToString("N2")</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        }
+
+        <div class="row g-2 mb-3 align-items-center">
+
+            <div class="col-12 col-md-6">
+                <input type="search"
+                       class="form-control"
+                       placeholder="Buscar por número o cliente..."
+                       aria-label="Buscar pedidos"
+                       @bind="filtro"
+                       @bind:event="oninput" />
+            </div>
+
+            <div class="col-8 col-md-3">
+                <select class="form-select"
+                        aria-label="Filtrar por estado"
+                        @bind="estadoFiltro">
+                    <option value="">Todos los estados</option>
+
+                    @foreach (var estado in EstadosPedido.Todos)
+                    {
+                        <option value="@estado">@estado</option>
+                    }
+                </select>
+            </div>
+
+            @if (ClienteId.HasValue)
+            {
+                <div class="col-4 col-md-3 text-end">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            @onclick="QuitarFiltroCliente">
+                        Ver todos
+                    </button>
+                </div>
+            }
+
+        </div>
+
+        <DataTable TItem="PedidoDto"
+                   Items="@PedidosFiltrados"
+                   ColumnCount="7"
+                   EmptyMessage="No hay pedidos para mostrar.">
+
+            <Header>
+                <th>#</th>
+                <th>Fecha</th>
+                <th>Cliente</th>
+                <th>Forma de pago</th>
+                <th class="text-end">Total</th>
+                <th>Estado</th>
+                <th class="text-end">Acciones</th>
+            </Header>
+
+            <RowTemplate Context="pedido">
+
+                <td class="fw-semibold">@pedido.PedidoId</td>
+
+                <td class="text-nowrap">@pedido.Fecha.ToString("dd/MM/yyyy HH:mm")</td>
+
+                <td>@pedido.ClienteNombre</td>
+
+                <td>@pedido.FormaPago</td>
+
+                <td class="text-end fw-semibold">@pedido.Total.ToString("N2")</td>
+
+                <td>
+                    <span class="badge @EstadosPedido.BadgeCss(pedido.Estado)">
+                        @pedido.Estado
+                    </span>
+                </td>
+
+                <td class="text-end text-nowrap">
+
+                    <button type="button"
+                            class="btn btn-sm btn-outline-secondary me-2"
+                            @onclick="@(() => VerDetalle(pedido))">
+                        Ver
+                    </button>
+
+                    @if (pedido.EsPendiente)
+                    {
+                        <button type="button"
+                                class="btn btn-sm btn-outline-primary"
+                                disabled="@(!Connectivity.IsOnline)"
+                                @onclick="@(() => OnEditar(pedido))">
+                            Editar
+                        </button>
+                    }
+
+                </td>
+
+            </RowTemplate>
+
+        </DataTable>
+    }
+
+</div>
+
+@code {
+    /// <summary>Filtro opcional: /pedidos?clienteId=5 (desde la lista de clientes).</summary>
+    [SupplyParameterFromQuery(Name = "clienteId")]
+    public int? ClienteId { get; set; }
+
+    private readonly SemaphoreSlim _loadLock =
+        new(1, 1);
+
+    private List<PedidoDto> pedidos = [];
+
+    private PedidoEstadisticasDto? estadisticas;
+
+    private bool isLoading = true;
+
+    private string? errorMessage;
+
+    private string filtro = string.Empty;
+    private string estadoFiltro = string.Empty;
+
+    private string? nombreCliente;
+
+    private IEnumerable<PedidoDto> PedidosFiltrados
+    {
+        get
+        {
+            IEnumerable<PedidoDto> resultado = pedidos;
+
+            if (!string.IsNullOrWhiteSpace(estadoFiltro))
+            {
+                resultado = resultado.Where(p => p.Estado == estadoFiltro);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtro))
+            {
+                var texto = filtro.Trim().TrimStart('#');
+
+                resultado = resultado.Where(p =>
+                    p.PedidoId.ToString() == texto ||
+                    p.ClienteNombre.Contains(texto, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return resultado;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        Connectivity.ConnectivityChanged +=
+            OnConnectivityChanged;
+    }
+
+    // Se ejecuta también cuando cambia ?clienteId sin salir de la página.
+    protected override async Task OnParametersSetAsync()
+    {
+        await CargarPedidosAsync();
+    }
+
+    private async Task CargarPedidosAsync()
+    {
+        await _loadLock.WaitAsync();
+
+        try
+        {
+            isLoading = true;
+            errorMessage = null;
+
+            if (ClienteId.HasValue)
+            {
+                pedidos =
+                    await PedidoService.ObtenerPorClienteAsync(ClienteId.Value);
+
+                estadisticas = null;
+
+                var cliente =
+                    await ClienteService.ObtenerPorIdAsync(ClienteId.Value);
+
+                nombreCliente = cliente?.Nombre ?? $"#{ClienteId.Value}";
+            }
+            else
+            {
+                pedidos =
+                    await PedidoService.ObtenerTodosAsync();
+
+                estadisticas =
+                    await PedidoService.ObtenerEstadisticasAsync();
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        catch (HttpRequestException e)
+        {
+            errorMessage =
+                $"No fue posible consultar los pedidos: {e.Message}";
+        }
+        catch (Exception e)
+        {
+            errorMessage =
+                $"Error inesperado: {e.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+
+            _loadLock.Release();
+        }
+    }
+
+    private void NuevoPedido()
+    {
+        var url = ClienteId.HasValue
+            ? $"/pedidos/crear?clienteId={ClienteId.Value}"
+            : "/pedidos/crear";
+
+        Navigation.NavigateTo(url);
+    }
+
+    private void VerDetalle(PedidoDto pedido)
+    {
+        Navigation.NavigateTo($"/pedidos/{pedido.PedidoId}");
+    }
+
+    private void OnEditar(PedidoDto pedido)
+    {
+        Navigation.NavigateTo($"/pedidos/editar/{pedido.PedidoId}");
+    }
+
+    private void QuitarFiltroCliente()
+    {
+        Navigation.NavigateTo("/pedidos");
+    }
+
+    private void OnConnectivityChanged()
+    {
+        _ = InvokeAsync(RecargarAlReconectarAsync);
+    }
+
+    private async Task RecargarAlReconectarAsync()
+    {
+        if (Connectivity.IsOnline)
+        {
+            await CargarPedidosAsync();
+        }
+
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Connectivity.ConnectivityChanged -=
+            OnConnectivityChanged;
+
+        _loadLock.Dispose();
+    }
+}

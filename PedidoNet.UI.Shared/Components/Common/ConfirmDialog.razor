@@ -1,5 +1,118 @@
-﻿<h3>ConfirmDialog</h3>
+﻿@*
+    Diálogo de confirmación reutilizable (Web y Mobile).
+    Usa las clases de Bootstrap sin JavaScript: el padre controla Visible.
+*@
+
+@if (Visible)
+{
+    <div class="modal fade show d-block"
+         style="background-color: rgba(0, 0, 0, .5);"
+         tabindex="-1"
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="confirm-dialog-title">
+
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirm-dialog-title">
+                        @Title
+                    </h5>
+
+                    <button type="button"
+                            class="btn-close"
+                            aria-label="Cerrar"
+                            disabled="@IsProcessing"
+                            @onclick="HandleCancel">
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    @if (ChildContent is not null)
+                    {
+                        @ChildContent
+                    }
+                    else
+                    {
+                        <p class="mb-0">@Message</p>
+                    }
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            disabled="@IsProcessing"
+                            @onclick="HandleCancel">
+                        @CancelText
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-@ConfirmVariant"
+                            disabled="@IsProcessing"
+                            @onclick="HandleConfirm">
+
+                        @if (IsProcessing)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                            @ProcessingText
+                        }
+                        else
+                        {
+                            @ConfirmText
+                        }
+
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+}
 
 @code {
+    [Parameter]
+    public bool Visible { get; set; }
 
+    [Parameter]
+    public string Title { get; set; } = "Confirmar";
+
+    [Parameter]
+    public string? Message { get; set; }
+
+    /// <summary>Contenido personalizado; si existe reemplaza a Message.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string ConfirmText { get; set; } = "Confirmar";
+
+    [Parameter]
+    public string CancelText { get; set; } = "Cancelar";
+
+    [Parameter]
+    public string ProcessingText { get; set; } = "Procesando...";
+
+    /// <summary>Variante de Bootstrap del botón de confirmar (danger, primary, success...).</summary>
+    [Parameter]
+    public string ConfirmVariant { get; set; } = "danger";
+
+    [Parameter]
+    public bool IsProcessing { get; set; }
+
+    [Parameter]
+    public EventCallback OnConfirm { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    private Task HandleConfirm()
+    {
+        return OnConfirm.InvokeAsync();
+    }
+
+    private Task HandleCancel()
+    {
+        return OnCancel.InvokeAsync();
+    }
 }

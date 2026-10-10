@@ -64,6 +64,8 @@
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.12" />
         <!-- MSAL.NET: login con Microsoft Entra ID -->
         <PackageReference Include="Microsoft.Identity.Client" Version="4.84.2" />
+        <!-- ZXing.Net.Maui: lectura de códigos de barras con la cámara -->
+        <PackageReference Include="ZXing.Net.Maui.Controls" Version="0.10.4" />
         <!-- SQLite: almacenamiento offline de Productos -->
         <PackageReference Include="sqlite-net-pcl" Version="1.11.285" />
         <PackageReference Include="SQLitePCLRaw.bundle_green" Version="2.1.11" />

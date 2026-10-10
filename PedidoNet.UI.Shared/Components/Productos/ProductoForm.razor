@@ -1,4 +1,7 @@
 ﻿@using PedidoNet.UI.Shared.Models.Productos
+@using PedidoNet.UI.Shared.Device
+
+@inject IBarcodeScannerService Scanner
 
 <EditForm Model="@Model"
           OnValidSubmit="HandleValidSubmit">
@@ -6,10 +9,28 @@
     <DataAnnotationsValidator />
 
     <FormField Label="Código">
-        <InputText class="form-control"
-                   @bind-Value="Model.Codigo" />
+        <div class="input-group">
+            <InputText class="form-control"
+                       @bind-Value="Model.Codigo" />
+
+            @* Solo en la app móvil (en Web IsSupported = false) *@
+            @if (Scanner.IsSupported)
+            {
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        disabled="@escaneando"
+                        @onclick="EscanearCodigoAsync">
+                    @(escaneando ? "Escaneando..." : "Escanear")
+                </button>
+            }
+        </div>
 
         <ValidationMessage For="@(() => Model.Codigo)" />
+
+        @if (!string.IsNullOrWhiteSpace(errorEscaneo))
+        {
+            <div class="text-danger small mt-1">@errorEscaneo</div>
+        }
     </FormField>
 
     <FormField Label="Nombre">
@@ -87,6 +108,37 @@
 </EditForm>
 
 @code {
+    private bool escaneando;
+    private string? errorEscaneo;
+
+    private async Task EscanearCodigoAsync()
+    {
+        try
+        {
+            escaneando = true;
+            errorEscaneo = null;
+
+            var resultado = await Scanner.ScanAsync(BarcodeScanKind.CodigoBarras);
+
+            if (resultado is not null)
+            {
+                Model.Codigo = resultado.Value;
+            }
+        }
+        catch (DeviceFeatureException ex)
+        {
+            errorEscaneo = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorEscaneo = $"No fue posible leer el código. {ex.Message}";
+        }
+        finally
+        {
+            escaneando = false;
+        }
+    }
+
 
     [Parameter, EditorRequired]
     public ProductoFormModel Model { get; set; } = new();

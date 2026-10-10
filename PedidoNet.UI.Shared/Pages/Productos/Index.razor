@@ -6,11 +6,13 @@
 @using PedidoNet.UI.Shared.Offline
 @using PedidoNet.UI.Shared.Offline.Productos
 @using PedidoNet.UI.Shared.Productos
+@using PedidoNet.UI.Shared.Device
 
 @inject IProductoService ProductoService
 @inject ProductoSyncService ProductoSync
 @inject IConnectivityService Connectivity
 @inject NavigationManager Navigation
+@inject IBarcodeScannerService Scanner
 
 <PageTitle>Productos - PedidoNet</PageTitle>
 
@@ -20,6 +22,17 @@
                 Description="Administra los productos disponibles.">
 
         <Actions>
+            @* Solo en la app móvil (en Web IsSupported = false) *@
+            @if (Scanner.IsSupported)
+            {
+                <button type="button"
+                        class="btn btn-outline-primary px-3 me-2"
+                        disabled="@escaneando"
+                        @onclick="EscanearProductoAsync">
+                    @(escaneando ? "Escaneando..." : "Escanear código")
+                </button>
+            }
+
             <AuthorizeView Roles="Administrador">
                 <button type="button"
                         class="btn btn-primary px-3"
@@ -30,6 +43,29 @@
         </Actions>
 
     </PageHeader>
+
+    @if (codigoNoEncontrado is not null)
+    {
+        <div class="alert alert-warning d-flex flex-column flex-sm-row gap-2 justify-content-between align-items-sm-center">
+            <span>No hay ningún producto con el código <strong>@codigoNoEncontrado</strong>.</span>
+
+            <div class="d-flex gap-2">
+                <AuthorizeView Roles="Administrador">
+                    <button type="button"
+                            class="btn btn-sm btn-primary"
+                            @onclick="CrearConCodigoEscaneado">
+                        Crear producto
+                    </button>
+                </AuthorizeView>
+
+                <button type="button"
+                        class="btn btn-sm btn-outline-secondary"
+                        @onclick="() => codigoNoEncontrado = null">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    }
 
     @if (!Connectivity.IsOnline)
     {
@@ -218,6 +254,58 @@
 
             _loadLock.Release();
         }
+    }
+
+    private bool escaneando;
+    private string? codigoNoEncontrado;
+
+    /*
+     * Escanea un código de barras y abre el producto que lo tiene.
+     * Busca en la lista ya cargada (datos locales), así funciona offline.
+     */
+    private async Task EscanearProductoAsync()
+    {
+        try
+        {
+            escaneando = true;
+            errorMessage = null;
+            codigoNoEncontrado = null;
+
+            var resultado = await Scanner.ScanAsync(BarcodeScanKind.CodigoBarras);
+
+            if (resultado is null)
+                return; // cancelado
+
+            var producto = productos.FirstOrDefault(p =>
+                string.Equals(p.Codigo?.Trim(), resultado.Value, StringComparison.OrdinalIgnoreCase));
+
+            if (producto is not null)
+            {
+                Navigation.NavigateTo($"/productos/editar/{producto.LocalId}");
+                return;
+            }
+
+            codigoNoEncontrado = resultado.Value;
+        }
+        catch (DeviceFeatureException ex)
+        {
+            errorMessage = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"No fue posible leer el código. {ex.Message}";
+        }
+        finally
+        {
+            escaneando = false;
+        }
+    }
+
+    private void CrearConCodigoEscaneado()
+    {
+        var codigo = Uri.EscapeDataString(codigoNoEncontrado ?? string.Empty);
+
+        Navigation.NavigateTo($"/productos/crear?codigo={codigo}");
     }
 
     private void NuevoProducto()
